@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>CientiFitness · Nutrition Manager</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@1,800;1,900&display=swap">
+<link rel="stylesheet" href="cf-theme.css">
+<script src="data/alimentos.js"></script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0}
+a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}
+input[type=number]{-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+@media print{[data-noprint]{display:none!important}body{background:#fff}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-direction:column">
+<sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
+<div style="position:fixed;inset:0;z-index:200;background:#f2f6fa;display:flex;align-items:center;justify-content:center;padding:20px">
+  <div style="width:min(400px,100%);background:#fff;border-radius:24px;box-shadow:var(--shadow-md);padding:32px 28px;display:flex;flex-direction:column;gap:16px;align-items:stretch">
+    <img src="assets/logo.png" alt="CientiFitness" style="height:110px;width:auto;align-self:center">
+    <div style="text-align:center;font-family:'Exo 2',var(--font-heading);font-style:italic;font-weight:900;font-size:22px;text-transform:uppercase">Cienti<span style="color:var(--color-accent)">Fitness</span></div>
+    <sc-if value="{{ loginReady }}" hint-placeholder-val="{{ true }}">
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Email<input class="input" type="email" value="{{ loginEmail }}" onChange="{{ onLoginEmail }}"></label>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Contraseña<input class="input" type="password" value="{{ loginPass }}" onChange="{{ onLoginPass }}" onKeyDown="{{ onLoginKey }}"></label>
+      <button class="btn btn-primary" onClick="{{ doLogin }}" style="min-height:42px">Entrar</button>
+    </sc-if>
+    <span style="font-size:13px;text-align:center;color:{{ loginMsgFg }}">{{ loginMsg }}</span>
+  </div>
+</div>
+</sc-if>
+
+<header data-noprint="1" style="display:flex;align-items:center;gap:20px;padding:0 28px;background:var(--color-bg);border-top:3px solid var(--color-accent);border-bottom:1px solid var(--color-divider);flex-wrap:wrap;min-height:68px">
+  <div style="display:flex;align-items:center;gap:12px;margin-right:auto;padding:6px 0">
+    <img src="assets/logo.png" alt="CientiFitness" style="height:54px;width:auto;display:block">
+    <div style="display:flex;flex-direction:column;line-height:1.1;border-left:1px solid var(--color-divider);padding-left:12px">
+      <span style="font-family:'Exo 2',var(--font-heading);font-style:italic;font-weight:900;font-size:21px;letter-spacing:0.01em;text-transform:uppercase;line-height:1">Cienti<span style="color:var(--color-accent)">Fitness</span></span>
+      <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Manager</span>
+    </div>
+  </div>
+  <nav style="display:flex;gap:4px">
+    <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="2">
+      <button onClick="{{ n.go }}" style="font:inherit;font-size:14px;font-weight:600;padding:8px 14px;background:{{ n.bd }};border:0;border-radius:999px;color:var(--color-text);cursor:pointer">{{ n.label }}</button>
+    </sc-for>
+  </nav>
+  <span style="font-size:12px;color:{{ saveFg }};font-variant-numeric:tabular-nums">{{ saveLabel }}</span>
+  <sc-if value="{{ showLogout }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" onClick="{{ doLogout }}" style="font-size:12px">Salir</button></sc-if>
+</header>
+
+<sc-if value="{{ isClients }}" hint-placeholder-val="{{ true }}">
+<main style="padding:36px 28px 80px;max-width:1280px;width:100%;margin:0 auto;box-sizing:border-box">
+  <div style="position:relative;overflow:hidden;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px;padding:28px 28px 24px;border-radius:24px;background:var(--color-accent-100)">
+    <div style="position:absolute;right:-30px;top:-40px;opacity:.55;pointer-events:none"><svg width="220" height="220" viewBox="0 0 100 100" style="display:block;fill:none;stroke:var(--color-accent-300);stroke-width:3"><ellipse cx="50" cy="50" rx="44" ry="16"></ellipse><ellipse cx="50" cy="50" rx="44" ry="16" transform="rotate(60 50 50)"></ellipse><ellipse cx="50" cy="50" rx="44" ry="16" transform="rotate(-60 50 50)"></ellipse><circle cx="50" cy="50" r="9" style="fill:#f2a497;stroke:none"></circle><circle cx="94" cy="50" r="4.5" style="fill:#efc95e;stroke:none"></circle><circle cx="28" cy="12" r="4.5" style="fill:#efc95e;stroke:none"></circle><circle cx="28" cy="88" r="4.5" style="fill:#3597d4;stroke:none"></circle></svg></div>
+    <div style="margin-right:auto;position:relative">
+      <div style="font-family:'Exo 2',var(--font-heading);font-style:italic;font-weight:900;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:6px">Nutrición basada en ciencia</div>
+      <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ clientCount }}</div>
+      <h1 style="margin:4px 0 0">Clientes</h1>
+    </div>
+    <input class="input" placeholder="Buscar cliente" value="{{ clientQuery }}" onChange="{{ onClientQuery }}" style="width:240px;max-width:100%;position:relative">
+    <button class="btn btn-primary" onClick="{{ newClient }}" style="min-height:38px;position:relative">
+      <svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+      Nuevo cliente
+    </button>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px">
+    <sc-for list="{{ clientCards }}" as="c" hint-placeholder-count="4">
+      <div style="background:var(--color-bg);display:flex;flex-direction:column;border-radius:18px;box-shadow:var(--shadow-sm)">
+        <button onClick="{{ c.open }}" style="font:inherit;color:inherit;text-align:left;background:transparent;border:0;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:14px;flex:1" style-hover="background:var(--color-neutral-100)">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+            <span style="font-weight:800;font-size:20px;line-height:1.15">{{ c.name }}</span>
+            <span class="tag tag-accent" style="flex:none">{{ c.goal }}</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <span style="font-weight:800;font-size:36px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1">{{ c.kcal }}</span>
+            <span style="font-size:13px;color:var(--color-neutral-700)">kcal/día</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ c.mac }}" as="mc" hint-placeholder-count="3"><span style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;background:{{ mc.bg }};color:{{ mc.fg }};font-variant-numeric:tabular-nums">{{ mc.l }}</span></sc-for></div>
+        </button>
+        <div style="display:flex;align-items:center;gap:4px;padding:8px 12px 8px 20px;border-top:1px solid var(--color-divider)">
+          <span style="font-size:12px;color:var(--color-neutral-700);margin-right:auto">{{ c.meta }}</span>
+          <button class="btn btn-ghost" onClick="{{ c.dup }}" style="font-size:12px">Duplicar</button>
+          <button class="btn btn-ghost" onClick="{{ c.del }}" style="font-size:12px">{{ c.delLabel }}</button>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <sc-if value="{{ noClients }}" hint-placeholder-val="{{ false }}">
+    <p style="padding:32px 0;color:var(--color-neutral-700)">No hay clientes que coincidan.</p>
+  </sc-if>
+</main>
+</sc-if>
+
+<sc-if value="{{ isClient }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;flex-direction:column">
+  <div data-noprint="1" style="padding:24px 28px 0;max-width:1280px;width:100%;margin:0 auto;box-sizing:border-box">
+    <button class="btn btn-ghost" onClick="{{ goClients }}" style="padding-left:0">
+      <svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+      Clientes
+    </button>
+    <div style="display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;margin-top:8px">
+      <input value="{{ cName }}" onChange="{{ onName }}" placeholder="Nombre del cliente" style="font:inherit;font-weight:800;font-size:34px;letter-spacing:-0.02em;background:transparent;border:0;border-bottom:2px solid transparent;padding:0;color:var(--color-text);flex:1 1 280px;min-width:0" style-focus="border-bottom-color:var(--color-accent)">
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-accent-700);flex:0 1 280px">Alergias / vetos (separados por comas)
+        <input class="input" value="{{ cAllergies }}" onChange="{{ onAllergies }}" placeholder="Ej: gluten, lactosa">
+      </label>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700);flex:0 1 220px">Email<input class="input" type="email" value="{{ cEmail }}" onChange="{{ onEmail }}" placeholder="cliente@email.com"></label>
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700);flex:0 1 180px">WhatsApp<input class="input" type="tel" value="{{ cPhone }}" onChange="{{ onPhone }}" placeholder="+34 600 000 000"></label>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:22px;flex-wrap:wrap">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.go }}" style="font:inherit;display:flex;gap:8px;align-items:baseline;padding:9px 16px;background:{{ t.bd }};border:0;border-radius:999px;color:{{ t.fg }};cursor:pointer;white-space:nowrap">
+          <span style="font-size:11px;font-variant-numeric:tabular-nums">{{ t.num }}</span>
+          <span style="font-weight:700;font-size:15px">{{ t.label }}</span>
+        </button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ hasConflicts }}" hint-placeholder-val="{{ false }}">
+      <div data-noprint="1" style="margin-top:16px;background:#fff1ee;border:1px solid #f4c9bf;color:#8f2a14;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+          <span style="font-weight:700;font-size:14px;margin-right:auto">{{ conflictTitle }}</span>
+          <button onClick="{{ removeAllConf }}" style="font:inherit;font-size:12px;font-weight:700;padding:7px 14px;border-radius:999px;border:0;background:#8f2a14;color:#fff;cursor:pointer">Quitar todos del plan</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <sc-for list="{{ conflicts }}" as="cf" hint-placeholder-count="2">
+            <span style="display:inline-flex;align-items:center;gap:8px;padding:5px 6px 5px 12px;border-radius:999px;background:#fff;font-size:12px"><strong>{{ cf.name }}</strong><span style="color:#b0533d">{{ cf.where }} · {{ cf.why }}</span><button onClick="{{ cf.remove }}" title="Quitar del plan" style="border:0;background:#fbe3dd;border-radius:50%;width:20px;height:20px;cursor:pointer;color:#8f2a14;display:flex;align-items:center;justify-content:center;padding:0"><svg width="11" height="11" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:3;fill:none;stroke-linecap:round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button></span>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div data-noprint="1" style="position:sticky;top:0;z-index:5;background:rgba(244,246,249,.92);backdrop-filter:blur(8px);margin-top:12px">
+    <div style="max-width:1280px;margin:0 auto;padding:12px 28px;display:flex;flex-wrap:wrap;gap:10px 28px;align-items:center;box-sizing:border-box">
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Objetivo</span>
+        <span style="font-weight:800;font-size:22px;color:var(--color-accent);font-variant-numeric:tabular-nums">{{ tK }}</span>
+        <span style="font-size:12px;color:var(--color-neutral-700)">kcal</span>
+      </div>
+      <sc-for list="{{ strip }}" as="m" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:120px">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;font-variant-numeric:tabular-nums">
+            <span style="font-weight:700">{{ m.label }}</span><span style="color:{{ m.fg }}">{{ m.val }}</span>
+          </div>
+          <div style="height:6px;background:var(--color-neutral-200);border-radius:999px;overflow:hidden"><div style="height:6px;border-radius:999px;width:{{ m.w }};background:{{ m.bar }}"></div></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ isCalc }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1280px;width:100%;margin:0 auto;padding:28px 28px 96px;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+    <div style="flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:20px">
+
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:12px;align-items:baseline"><span style="font-size:13px;color:var(--color-accent-700);font-variant-numeric:tabular-nums">01</span><h3 style="margin:0;font-size:22px">Datos personales</h3></div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+          <sc-for list="{{ sexoSeg }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 16px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Edad (años)<input class="input" type="number" value="{{ edad }}" onChange="{{ onEdad }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Peso (kg)<input class="input" type="number" step="0.1" value="{{ peso }}" onChange="{{ onPeso }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Altura (cm)<input class="input" type="number" value="{{ altura }}" onChange="{{ onAltura }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">% grasa (opcional)<input class="input" type="number" step="0.1" value="{{ grasa }}" onChange="{{ onGrasa }}" placeholder="—"></label>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px">
+          <sc-for list="{{ tmbRows }}" as="r" hint-placeholder-count="4">
+            <div style="background:var(--color-surface);padding:12px 14px;display:flex;flex-direction:column;gap:2px;border-radius:14px">
+              <span style="font-size:12px;color:var(--color-neutral-700)">{{ r.name }}</span>
+              <span style="font-weight:700;font-variant-numeric:tabular-nums">{{ r.val }}</span>
+            </div>
+          </sc-for>
+          <div style="background:var(--color-accent);color:#fff;padding:12px 14px;display:flex;flex-direction:column;gap:2px;border-radius:14px">
+            <span style="font-size:12px">TMB promedio</span>
+            <span style="font-weight:800;font-variant-numeric:tabular-nums">{{ tmbAvg }}</span>
+          </div>
+        </div>
+        <sc-if value="{{ noBf }}" hint-placeholder-val="{{ false }}"><span style="font-size:12px;color:var(--color-neutral-700)">Con % de grasa se añaden Cunningham y Katch-McArdle al promedio.</span></sc-if>
+      </section>
+
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap"><span style="font-size:13px;color:var(--color-accent-700)">02</span><h3 style="margin:0;font-size:22px;margin-right:auto">Factor de actividad</h3><span style="font-size:14px;font-variant-numeric:tabular-nums">{{ gastoFA }}</span></div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ faOpts }}" as="o" hint-placeholder-count="5">
+            <button onClick="{{ o.pick }}" style="display:flex;gap:12px;align-items:flex-start;text-align:left;padding:12px;border:0;border-radius:14px;background:{{ o.bg }};font:inherit;color:inherit;cursor:pointer;width:100%">
+              <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ o.ring }};box-shadow:inset 0 0 0 3px var(--color-bg);background:{{ o.dot }};flex:none;margin-top:3px;box-sizing:border-box"></span>
+              <span style="flex:1"><span style="display:block;font-weight:600;font-size:14px">{{ o.label }}</span><span style="display:block;font-size:13px;color:var(--color-neutral-700)">{{ o.desc }}</span></span>
+              <span style="font-size:13px;font-variant-numeric:tabular-nums">{{ o.meta }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap"><span style="font-size:13px;color:var(--color-accent-700)">03</span><h3 style="margin:0;font-size:22px;margin-right:auto">NEAT · actividad no-ejercicio</h3><span style="font-size:14px;font-variant-numeric:tabular-nums">{{ neatAdd }}</span></div>
+        <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700)">Tipo de trabajo</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ jobOpts }}" as="o" hint-placeholder-count="4">
+            <button onClick="{{ o.pick }}" style="display:flex;gap:12px;align-items:flex-start;text-align:left;padding:10px 12px;border:0;border-radius:14px;background:{{ o.bg }};font:inherit;color:inherit;cursor:pointer;width:100%">
+              <span style="width:16px;height:16px;border-radius:50%;border:1.5px solid {{ o.ring }};box-shadow:inset 0 0 0 3px var(--color-bg);background:{{ o.dot }};flex:none;margin-top:3px;box-sizing:border-box"></span>
+              <span style="flex:1"><span style="display:block;font-weight:600;font-size:14px">{{ o.label }}</span><span style="display:block;font-size:13px;color:var(--color-neutral-700)">{{ o.desc }}</span></span>
+              <span style="font-size:13px;font-variant-numeric:tabular-nums">{{ o.meta }}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Horas de pie extra al día<input class="input" type="number" step="0.5" value="{{ pie }}" onChange="{{ onPie }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Hobbies activos (h/semana)<input class="input" type="number" step="0.5" value="{{ hobbies }}" onChange="{{ onHobbies }}"></label>
+          <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Desplazamientos
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+              <sc-for list="{{ desplSeg }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 12px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Fidgeting
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+              <sc-for list="{{ fidgSeg }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 12px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;border-top:1px solid var(--color-divider)">
+          <sc-for list="{{ neatRows }}" as="r" hint-placeholder-count="5">
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--color-neutral-300);font-size:13px"><span>{{ r.label }}</span><span style="font-variant-numeric:tabular-nums">{{ r.val }}</span></div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div style="display:flex;gap:12px;align-items:baseline"><span style="font-size:13px;color:var(--color-accent-700)">04</span><h3 style="margin:0;font-size:22px">Objetivo y macros</h3></div>
+        <div style="display:flex;flex-wrap:wrap;gap:16px 32px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Kcal del plan
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+              <sc-for list="{{ kcalSrcSeg }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 14px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ isManual }}" hint-placeholder-val="{{ false }}">
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700);width:140px">Kcal manuales<input class="input" type="number" value="{{ kcalManual }}" onChange="{{ onKcalManual }}"></label>
+          </sc-if>
+          <sc-if value="{{ isCalcSrc }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Ajuste sobre mantenimiento
+              <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+                <sc-for list="{{ adjSeg }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 12px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+                <sc-if value="{{ showAdjPct }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:4px;margin-left:12px"><input class="input" type="number" value="{{ adjPct }}" onChange="{{ onAdjPct }}" style="width:64px"><span style="font-size:13px;color:var(--color-text)">%</span></div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Definir macros por
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+            <sc-for list="{{ macroModeSeg }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 14px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+          </div>
+        </div>
+        <sc-if value="{{ isGkg }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Proteína (g/kg)<input class="input" type="number" step="0.1" value="{{ pg }}" onChange="{{ onPg }}"></label>
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Grasa (g/kg)<input class="input" type="number" step="0.1" value="{{ fg }}" onChange="{{ onFg }}"></label>
+            <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Hidratos<div style="min-height:36px;display:flex;align-items:center;font-size:14px;color:var(--color-text)">El resto de kcal</div></div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isPctMode }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Proteína (%)<input class="input" type="number" value="{{ pp }}" onChange="{{ onPp }}"></label>
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Hidratos (%)<input class="input" type="number" value="{{ pc }}" onChange="{{ onPc }}"></label>
+            <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Grasa (%)<input class="input" type="number" value="{{ pf }}" onChange="{{ onPf }}"></label>
+          </div>
+        </sc-if>
+        <sc-if value="{{ macroWarn }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:12px 14px;border-radius:14px;background:var(--color-accent-100);color:var(--color-accent-800);font-size:13px">{{ macroWarnText }}</div>
+        </sc-if>
+      </section>
+    </div>
+
+    <aside style="flex:1 1 300px;min-width:0;position:sticky;top:84px;display:flex;flex-direction:column;gap:0;background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);overflow:hidden">
+      <div style="padding:20px;display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">Necesidad diaria</span>
+        <div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:800;font-size:56px;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums">{{ tK }}</span><span style="font-size:14px">kcal</span></div>
+        <span style="font-size:12px;color:var(--color-neutral-700)">{{ kSrcNote }}</span>
+      </div>
+      <div style="padding:0 20px 16px;display:flex;flex-direction:column">
+        <sc-for list="{{ sumRows }}" as="r" hint-placeholder-count="5">
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-top:1px solid var(--color-divider);font-size:13px"><span>{{ r.label }}</span><span style="font-variant-numeric:tabular-nums;font-weight:{{ r.w }}">{{ r.val }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;height:10px;margin:0 20px;border-radius:999px;overflow:hidden;gap:2px">
+        <div style="width:{{ barP }};background:var(--prot)"></div>
+        <div style="width:{{ barC }};background:var(--carb)"></div>
+        <div style="width:{{ barF }};background:var(--fat)"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 20px 0">
+        <sc-for list="{{ macroCells }}" as="m" hint-placeholder-count="3">
+          <div style="background:{{ m.bg }};color:{{ m.fg }};border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:2px">
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="width:8px;height:8px;border-radius:50%;background:{{ m.sw }}"></span>{{ m.label }}</span>
+            <span style="font-weight:800;font-size:22px;font-variant-numeric:tabular-nums">{{ m.g }}</span>
+            <span style="font-size:12px;opacity:.85;font-variant-numeric:tabular-nums">{{ m.sub }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="padding:14px 20px;font-size:12px;color:var(--color-neutral-700)">{{ etaNote }}</div>
+      <button class="btn btn-primary" onClick="{{ goPlan }}" style="justify-content:space-between;padding:14px 20px;font-size:15px;margin:0 16px 16px;border-radius:14px">Continuar al plan de comidas<span>→</span></button>
+    </aside>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isPlan }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1280px;width:100%;margin:0 auto;padding:28px 28px 96px;box-sizing:border-box;display:flex;flex-direction:column;gap:28px">
+    <div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center">
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+        <sc-for list="{{ planModeSeg }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;font-weight:600;padding:9px 16px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+      </div>
+      <span style="font-size:13px;color:var(--color-neutral-700);flex:1 1 260px">{{ modeHelp }}</span>
+      <span style="font-size:13px;font-variant-numeric:tabular-nums;padding:5px 12px;border-radius:999px;background:{{ distBg }};color:{{ distFg }}">{{ distLabel }}</span>
+      <button class="btn btn-primary" onClick="{{ addMeal }}" style="min-height:36px">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>Comida
+      </button>
+    </div>
+
+    <sc-if value="{{ isClosedPlan }}" hint-placeholder-val="{{ false }}">
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:20px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+          <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);margin-right:6px">Menús de la semana</span>
+          <sc-for list="{{ menuTabs }}" as="mt" hint-placeholder-count="3"><button onClick="{{ mt.pick }}" style="font:inherit;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 16px;border:0;border-radius:14px;background:{{ mt.bg }};color:{{ mt.fg }};cursor:pointer;text-align:left"><span style="font-weight:700;font-size:14px">{{ mt.name }}</span><span style="font-size:11px;opacity:.85">{{ mt.days }}</span></button></sc-for>
+          <button onClick="{{ addMenu }}" style="font:inherit;font-size:13px;font-weight:600;padding:12px 16px;background:transparent;border:1.5px dashed var(--color-neutral-300);border-radius:14px;color:var(--color-accent-700);cursor:pointer" style-hover="background:var(--color-accent-100)">+ Menú</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding-top:14px;border-top:1px solid var(--color-divider)">
+          <input class="input" value="{{ menuName }}" onChange="{{ onMenuName }}" placeholder="Nombre del menú" style="width:200px;font-weight:700">
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <sc-for list="{{ dayChips }}" as="d" hint-placeholder-count="7"><button onClick="{{ d.toggle }}" title="{{ d.full }}" style="font:inherit;width:40px;height:40px;border-radius:50%;border:1.5px solid {{ d.bd }};background:{{ d.bg }};color:{{ d.fg }};font-weight:700;font-size:13px;cursor:pointer">{{ d.l }}</button></sc-for>
+          </div>
+          <span style="font-size:12px;color:var(--color-neutral-700);flex:1 1 200px">Pulsa un día para asignarlo a este menú; los días en gris están en otro menú.</span>
+          <button class="btn btn-ghost" onClick="{{ dupMenu }}" style="font-size:13px">Duplicar menú</button>
+          <sc-if value="{{ canDelMenu }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" onClick="{{ delMenu }}" style="font-size:13px">Eliminar menú</button></sc-if>
+        </div>
+        <sc-if value="{{ unassigned }}" hint-placeholder-val="{{ false }}"><div style="padding:10px 14px;border-radius:12px;background:#fff4dc;color:#8a5a00;font-size:13px">{{ unassignedText }}</div></sc-if>
+      </section>
+    </sc-if>
+
+    <sc-for list="{{ meals }}" as="m" hint-placeholder-count="3">
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:10px 20px 20px;display:flex;flex-direction:column">
+        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 0">
+          <span style="font-size:13px;color:var(--color-accent-700);font-variant-numeric:tabular-nums">{{ m.num }}</span>
+          <input value="{{ m.name }}" onChange="{{ m.onName }}" style="font:inherit;font-weight:800;font-size:22px;background:transparent;border:0;border-bottom:2px solid transparent;padding:0;color:var(--color-text);width:200px;min-width:0" style-focus="border-bottom-color:var(--color-accent)">
+          <sc-if value="{{ m.notSplit }}" hint-placeholder-val="{{ true }}">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input class="input" type="number" value="{{ m.pct }}" onChange="{{ m.onPct }}" style="width:58px;min-height:30px;padding:4px 8px">% kcal</label>
+          </sc-if>
+          <sc-if value="{{ m.split }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:4px">P<input class="input" type="number" value="{{ m.pp }}" onChange="{{ m.onPp }}" style="width:52px;min-height:30px;padding:4px 6px">%</label>
+              <label style="display:flex;align-items:center;gap:4px">C<input class="input" type="number" value="{{ m.pc }}" onChange="{{ m.onPc }}" style="width:52px;min-height:30px;padding:4px 6px">%</label>
+              <label style="display:flex;align-items:center;gap:4px">G<input class="input" type="number" value="{{ m.pf }}" onChange="{{ m.onPf }}" style="width:52px;min-height:30px;padding:4px 6px">%</label>
+            </div>
+          </sc-if>
+          <button class="btn btn-ghost" onClick="{{ m.toggleSplit }}" style="font-size:12px">{{ m.splitLabel }}</button>
+          <sc-if value="{{ m.showCheatBtn }}" hint-placeholder-val="{{ false }}"><button onClick="{{ m.toggleCheat }}" style="font:inherit;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;border:1.5px solid var(--color-accent-300);background:transparent;color:var(--color-accent-700);cursor:pointer">{{ m.cheatLabel }}</button></sc-if>
+          <div style="display:flex;flex-direction:column;margin-left:auto;text-align:right;font-size:13px;font-variant-numeric:tabular-nums">
+            <span style="font-weight:700">{{ m.tgtLine }}</span>
+            <span style="color:var(--color-neutral-700)">{{ m.actLine }}</span>
+          </div>
+          <div style="display:flex;gap:2px">
+            <button class="btn btn-secondary" onClick="{{ m.openTpl }}" style="font-size:12px;padding:6px 10px">Plantillas</button>
+            <button class="btn btn-secondary" onClick="{{ m.saveTpl }}" style="font-size:12px;padding:6px 10px">Guardar</button>
+            <button class="btn btn-secondary btn-icon" onClick="{{ m.remove }}" title="Eliminar comida" style="width:32px;height:32px">
+              <svg width="15" height="15" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <sc-if value="{{ m.isCheat }}" hint-placeholder-val="{{ false }}">
+          <div style="background:var(--color-accent-100);border-radius:16px;padding:18px 20px;display:flex;gap:6px 16px;align-items:baseline;flex-wrap:wrap;color:var(--color-accent-800)"><span style="font-weight:800;font-size:17px">Comida libre</span><span style="font-size:13px">{{ m.cheatText }}</span></div>
+        </sc-if>
+        <sc-if value="{{ m.isOpen }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:14px">
+          <sc-for list="{{ m.options }}" as="op" hint-placeholder-count="1">
+          <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+            <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:800;padding:4px 12px;border-radius:999px;background:var(--color-accent-100);color:var(--color-accent-800)">{{ op.title }}</span>
+            <span style="font-size:12px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums;margin-right:auto">{{ op.kcalLine }}</span>
+            <button class="btn btn-ghost" onClick="{{ op.dup }}" style="font-size:12px">Duplicar opción</button>
+            <sc-if value="{{ op.canRemove }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" onClick="{{ op.remove }}" style="font-size:12px">Quitar opción</button></sc-if>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+            <sc-for list="{{ op.cols }}" as="col" hint-placeholder-count="4">
+              <div style="background:{{ col.bg }};border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;min-height:150px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px">
+                  <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;display:flex;align-items:center;gap:6px;color:{{ col.ink }}"><span style="width:8px;height:8px;border-radius:50%;background:{{ col.sw }}"></span>{{ col.label }}</span>
+                  <span style="font-size:12px;color:{{ col.ink }};font-weight:600;font-variant-numeric:tabular-nums">{{ col.sub }}</span>
+                </div>
+                <sc-for list="{{ col.items }}" as="it" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:8px;padding:8px 8px 8px 12px;background:var(--color-bg);border-radius:12px;box-shadow:0 1px 2px rgba(31,38,48,.05)">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                      <span style="font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ it.name }}</span>
+                      <span style="font-size:11px;color:{{ it.metaFg }}">{{ it.meta }}</span>
+                    </div>
+                    <sc-if value="{{ it.isVeg }}" hint-placeholder-val="{{ false }}">
+                      <input class="input" type="number" value="{{ it.g }}" onChange="{{ it.onG }}" style="width:58px;min-height:28px;padding:2px 6px;text-align:right;font-weight:700">
+                    </sc-if>
+                    <sc-if value="{{ it.notVeg }}" hint-placeholder-val="{{ true }}">
+                      <span style="font-weight:800;font-size:16px;font-variant-numeric:tabular-nums">{{ it.g }}</span>
+                    </sc-if>
+                    <span style="font-size:12px;color:var(--color-neutral-700)">g</span>
+                    <button onClick="{{ it.remove }}" title="Quitar" style="border:0;background:transparent;cursor:pointer;color:var(--color-neutral-600);padding:2px;display:flex" style-hover="color:var(--color-accent)">
+                      <svg width="14" height="14" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+                    </button>
+                  </div>
+                </sc-for>
+                <button onClick="{{ col.add }}" style="font:inherit;font-size:13px;text-align:left;padding:8px 10px;background:transparent;border:1.5px dashed var(--color-neutral-300);border-radius:12px;color:var(--color-neutral-700);cursor:pointer;margin-top:auto" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">+ Añadir</button>
+              </div>
+            </sc-for>
+          </div>
+          </div>
+          </sc-for>
+          <button onClick="{{ m.addOption }}" style="font:inherit;font-size:13px;font-weight:600;text-align:left;padding:10px 12px;background:transparent;border:1.5px dashed var(--color-neutral-300);border-radius:12px;color:var(--color-accent-700);cursor:pointer;align-self:flex-start" style-hover="background:var(--color-accent-100)">+ Añadir opción</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ m.isClosed }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <sc-for list="{{ m.options }}" as="op" hint-placeholder-count="1">
+              <div style="background:var(--color-surface);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px">
+                <div style="display:flex;align-items:baseline;gap:12px">
+                  <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700">{{ op.title }}</span>
+                  <span style="font-size:12px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums;margin-right:auto">{{ op.kcalLine }}</span>
+                  <button class="btn btn-ghost" onClick="{{ op.dup }}" style="font-size:12px">Duplicar opción</button>
+                  <sc-if value="{{ op.canRemove }}" hint-placeholder-val="{{ false }}"><button class="btn btn-ghost" onClick="{{ op.remove }}" style="font-size:12px">Quitar opción</button></sc-if>
+                </div>
+                <sc-for list="{{ op.rows }}" as="row" hint-placeholder-count="4">
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-top:6px;border-top:1px solid var(--color-neutral-300)">
+                    <span style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:{{ row.sw }};color:{{ row.swFg }}">{{ row.tag }}</span>
+                    <sc-for list="{{ row.items }}" as="it" hint-placeholder-count="1">
+                      <div style="display:flex;align-items:center;gap:6px;padding:4px 6px 4px 12px;background:{{ it.bg }};color:{{ it.ink }};border-radius:999px;font-size:13px">
+                        <span style="font-weight:600">{{ it.name }}</span>
+                        <sc-if value="{{ it.flag }}" hint-placeholder-val="{{ false }}"><span class="tag tag-danger" style="padding:1px 7px;font-size:10px">Alergia</span></sc-if>
+                        <sc-if value="{{ it.showShare }}" hint-placeholder-val="{{ false }}">
+                          <input class="input" type="number" value="{{ it.share }}" onChange="{{ it.onShare }}" title="Reparto dentro del macro (%)" style="width:48px;min-height:24px;padding:1px 4px;font-size:12px;text-align:right"><span style="font-size:11px;color:var(--color-neutral-700)">%</span>
+                        </sc-if>
+                        <sc-if value="{{ it.isVeg }}" hint-placeholder-val="{{ false }}">
+                          <input class="input" type="number" value="{{ it.g }}" onChange="{{ it.onG }}" style="width:52px;min-height:24px;padding:1px 4px;font-size:13px;text-align:right;font-weight:700">
+                        </sc-if>
+                        <sc-if value="{{ it.notVeg }}" hint-placeholder-val="{{ true }}"><strong style="font-variant-numeric:tabular-nums">{{ it.g }}</strong></sc-if>
+                        <span style="font-size:12px">g</span>
+                        <button onClick="{{ it.remove }}" title="Quitar" style="border:0;background:transparent;cursor:pointer;color:var(--color-neutral-600);padding:2px;display:flex" style-hover="color:var(--color-accent)"><svg width="13" height="13" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+                      </div>
+                    </sc-for>
+                    <button onClick="{{ row.add }}" style="font:inherit;font-size:12px;padding:4px 10px;background:transparent;border:1.5px dashed var(--color-neutral-300);border-radius:12px;color:var(--color-neutral-700);cursor:pointer" style-hover="border-color:var(--color-accent);color:var(--color-accent-700)">+ {{ row.label }}</button>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+            <button onClick="{{ m.addOption }}" style="font:inherit;font-size:13px;font-weight:600;text-align:left;padding:10px 14px;background:transparent;border:1.5px dashed var(--color-neutral-300);border-radius:12px;color:var(--color-accent-700);cursor:pointer;align-self:flex-start" style-hover="background:var(--color-accent-100)">+ Añadir opción</button>
+          </div>
+        </sc-if>
+      </section>
+    </sc-for>
+    <sc-if value="{{ noMeals }}" hint-placeholder-val="{{ false }}"><p style="color:var(--color-neutral-700)">Sin comidas. Añade la primera con el botón «Comida».</p></sc-if>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isView }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1280px;width:100%;margin:0 auto;padding:28px 28px 96px;box-sizing:border-box;display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start">
+    <div data-noprint="1" style="flex:1 1 260px;display:flex;flex-direction:column;gap:16px;position:sticky;top:76px">
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Notas para el cliente<textarea class="input" rows="6" value="{{ notes }}" onChange="{{ onNotes }}" placeholder="Instrucciones, hidratación, suplementación…"></textarea></label>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Lista de la compra para
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+          <sc-for list="{{ daysSeg }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 14px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+        </div>
+      </div>
+      <button class="btn btn-primary" onClick="{{ print }}" style="justify-content:flex-start;padding:12px 16px">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"></path><rect x="6" y="14" width="12" height="8" rx="1"></rect></svg>
+        Imprimir / guardar PDF
+      </button>
+      <div style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:18px;display:flex;flex-direction:column;gap:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-weight:800;font-size:16px">Guardar y enviar</span><span style="font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:{{ verBg }};color:{{ verFg }}">{{ verStatus }}</span></div>
+        <button class="btn btn-primary" onClick="{{ saveVersion }}" style="justify-content:center;border-radius:12px">{{ saveVersionLabel }}</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn btn-secondary" onClick="{{ sendEmail }}" style="justify-content:center;border-radius:12px"><svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-10 6L2 7"></path></svg>Email</button>
+          <button onClick="{{ sendWa }}" style="font:inherit;font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;background:#25d366;color:#fff;cursor:pointer;min-height:36px"><svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"></path></svg>WhatsApp</button>
+        </div>
+        <span style="font-size:12px;color:var(--color-neutral-800)">{{ sendTo }}</span>
+        <span style="font-size:12px;color:var(--color-neutral-700)">{{ sendNote }}</span>
+        <sc-if value="{{ hasHistory }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{ history }}" as="h" hint-placeholder-count="2"><div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:7px 0;border-top:1px solid var(--color-divider)"><span>{{ h.label }}</span><span style="color:var(--color-neutral-700);white-space:nowrap">{{ h.at }}</span></div></sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <article style="flex:3 1 560px;min-width:0;background:#fff;border-radius:24px;padding:40px;box-sizing:border-box;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:28px">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;border-bottom:1px solid var(--color-divider);padding-bottom:16px">
+        <div style="display:flex;gap:16px;align-items:center">
+          <img src="assets/logo.png" alt="CientiFitness" style="height:72px;width:auto;display:block">
+          <div>
+            <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">CientiFitness · Plan nutricional</div>
+            <h2 style="margin:6px 0 0">{{ cName }}</h2>
+          </div>
+        </div>
+        <div style="text-align:right;font-size:13px;color:var(--color-neutral-700)">{{ vDate }}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:14px">
+        <div style="background:var(--color-accent);color:#fff;padding:14px;border-radius:14px"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase">Energía</div><div style="font-weight:800;font-size:26px;font-variant-numeric:tabular-nums">{{ tK }}</div><div style="font-size:12px">kcal/día</div></div>
+        <sc-for list="{{ macroCells }}" as="m" hint-placeholder-count="3">
+          <div style="background:{{ m.bg }};color:{{ m.fg }};padding:14px;border-radius:14px"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase">{{ m.label }}</div><div style="font-weight:800;font-size:26px;font-variant-numeric:tabular-nums">{{ m.g }}</div><div style="font-size:12px;color:var(--color-neutral-700)">gramos/día</div></div>
+        </sc-for>
+      </div>
+      <sc-if value="{{ hasNotes }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:16px 18px;border-radius:14px;background:var(--color-surface);font-size:14px;white-space:pre-wrap"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);margin-bottom:4px">Notas</div>{{ notes }}</div>
+      </sc-if>
+      <sc-if value="{{ vOpenHint }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font-size:13px;color:var(--color-neutral-700)">En cada comida elige una opción y, dentro de ella, un alimento de cada grupo; las cantidades ya están ajustadas para que cualquiera cuadre.</p></sc-if>
+      <sc-for list="{{ vGroups }}" as="vg" hint-placeholder-count="1">
+      <div style="display:flex;flex-direction:column;gap:22px">
+      <sc-if value="{{ vg.hasTitle }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding:10px 16px;border-radius:14px;background:var(--color-accent-100);color:var(--color-accent-800);break-after:avoid"><span style="font-weight:800;font-size:17px">{{ vg.title }}</span><span style="font-size:13px">{{ vg.days }}</span></div></sc-if>
+      <sc-for list="{{ vg.meals }}" as="vm" hint-placeholder-count="3">
+        <div style="display:flex;flex-direction:column;gap:8px;break-inside:avoid">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--color-text);padding-bottom:4px"><span style="font-weight:800;font-size:18px">{{ vm.name }}</span><span style="font-size:13px;font-variant-numeric:tabular-nums">{{ vm.kcal }}</span></div>
+          <sc-for list="{{ vm.opts }}" as="vo" hint-placeholder-count="1">
+          <div style="display:flex;flex-direction:column;gap:6px;break-inside:avoid">
+          <span style="font-size:12px;font-weight:800;color:var(--color-accent-700)">{{ vo.title }}</span>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 20px">
+            <sc-for list="{{ vo.blocks }}" as="b" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:{{ b.ink }};display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:{{ b.sw }}"></span>{{ b.label }}</span>
+                <sc-for list="{{ b.lines }}" as="l" hint-placeholder-count="2">
+                  <div style="display:flex;justify-content:space-between;gap:8px;font-size:14px;border-bottom:1px dotted var(--color-neutral-400);padding:2px 0"><span>{{ l.name }}</span><strong style="font-variant-numeric:tabular-nums;white-space:nowrap;flex:none">{{ l.g }}</strong></div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          </div>
+          </sc-for>
+        </div>
+      </sc-for>
+      </div>
+      </sc-for>
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:16px;background:var(--color-accent-100);color:var(--color-accent-800);flex-wrap:wrap">
+        <svg width="28" height="28" viewBox="0 0 100 100" style="display:block;fill:none;stroke:var(--color-accent-400);stroke-width:3"><ellipse cx="50" cy="50" rx="44" ry="16"></ellipse><ellipse cx="50" cy="50" rx="44" ry="16" transform="rotate(60 50 50)"></ellipse><ellipse cx="50" cy="50" rx="44" ry="16" transform="rotate(-60 50 50)"></ellipse><circle cx="50" cy="50" r="9" style="fill:#f2a497;stroke:none"></circle><circle cx="94" cy="50" r="4.5" style="fill:#efc95e;stroke:none"></circle><circle cx="28" cy="12" r="4.5" style="fill:#efc95e;stroke:none"></circle><circle cx="28" cy="88" r="4.5" style="fill:#3597d4;stroke:none"></circle></svg>
+        <span style="font-family:'Exo 2',var(--font-heading);font-style:italic;font-weight:900;font-size:15px;text-transform:uppercase;color:var(--color-text)">Cienti<span style="color:var(--color-accent)">Fitness</span></span>
+        <span style="font-size:13px;margin-left:auto">Dudas por WhatsApp: +34 627 547 983</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;break-before:page;border-top:1px solid var(--color-divider);padding-top:16px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Lista de la compra</h3><span style="font-size:13px;color:var(--color-neutral-700)">{{ shopNote }}</span></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px 28px">
+          <sc-for list="{{ shop }}" as="sc" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:2px;break-inside:avoid">
+              <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;color:{{ sc.ink }};background:{{ sc.bg }};padding:5px 10px;border-radius:10px;margin-bottom:4px">{{ sc.cat }}</span>
+              <sc-for list="{{ sc.items }}" as="l" hint-placeholder-count="3">
+                <div style="display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:3px 0;border-bottom:1px solid var(--color-neutral-200)"><span>{{ l.name }}</span><span style="font-variant-numeric:tabular-nums">{{ l.g }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </article>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isProg }}" hint-placeholder-val="{{ false }}">
+  <main style="max-width:1280px;width:100%;margin:0 auto;padding:28px 28px 96px;box-sizing:border-box;display:flex;flex-direction:column;gap:32px">
+    <div style="display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end">
+      <div style="margin-right:auto">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ lastLabel }}</div>
+        <h3 style="margin:4px 0 0;font-size:24px">Composición corporal</h3>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Protocolo de % grasa
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+          <sc-for list="{{ protoSeg }}" as="o" hint-placeholder-count="2"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:8px 14px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ hasLogs }}" hint-placeholder-val="{{ true }}"><button class="btn btn-secondary" onClick="{{ applyToCalc }}" style="min-height:36px">{{ applyLabel }}</button></sc-if>
+      <button class="btn btn-primary" onClick="{{ toggleLogForm }}" style="min-height:36px">
+        <svg width="16" height="16" viewBox="0 0 24 24" style="stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>{{ logFormLabel }}
+      </button>
+    </div>
+
+    <sc-if value="{{ showLogForm }}" hint-placeholder-val="{{ false }}">
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:420px">
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Fecha<input class="input" type="date" value="{{ lfDate }}" onChange="{{ onLfDate }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Peso (kg)<input class="input" type="number" step="0.1" value="{{ lfPeso }}" onChange="{{ onLfPeso }}"></label>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:10px"><span style="font-weight:800">Pliegues (mm)</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ plHelp }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
+            <sc-for list="{{ lfPl }}" as="f" hint-placeholder-count="10">
+              <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:{{ f.fg }};font-weight:{{ f.w }}">{{ f.label }}<input class="input" type="number" step="0.5" value="{{ f.val }}" onChange="{{ f.on }}"></label>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;border-top:1px solid var(--color-divider);padding-top:10px"><span style="font-weight:800">Perímetros (cm)</span><span style="font-size:12px;color:var(--color-neutral-700)">Cintura, cadera y cuello: US Navy. Brazo, muslo y pantorrilla + su pliegue: perímetros corregidos.</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px">
+            <sc-for list="{{ lfPer }}" as="f" hint-placeholder-count="13">
+              <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">{{ f.label }}<input class="input" type="number" step="0.5" value="{{ f.val }}" onChange="{{ f.on }}"></label>
+            </sc-for>
+          </div>
+        </div>
+        <sc-if value="{{ lfPreview }}" hint-placeholder-val="{{ false }}"><div style="font-size:13px;padding:12px 14px;border-radius:14px;background:var(--color-accent-100);color:var(--color-accent-800)">{{ lfPreviewText }}</div></sc-if>
+        <div style="display:flex;gap:8px"><button class="btn btn-primary" onClick="{{ saveLog }}">Guardar medición</button><button class="btn btn-secondary" onClick="{{ toggleLogForm }}">Cancelar</button></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{ noLogs }}" hint-placeholder-val="{{ false }}">
+      <p style="color:var(--color-neutral-700);margin:0">Aún no hay mediciones. Registra la primera con «Nueva medición».</p>
+    </sc-if>
+
+    <sc-if value="{{ hasLogs }}" hint-placeholder-val="{{ true }}">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px">
+        <sc-for list="{{ compCells }}" as="c" hint-placeholder-count="8">
+          <div style="background:{{ c.bg }};color:{{ c.fg }};border-radius:18px;box-shadow:var(--shadow-sm);padding:14px;display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase">{{ c.label }}</span>
+            <span style="display:flex;align-items:baseline;gap:4px"><span style="font-weight:800;font-size:30px;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.05">{{ c.val }}</span><span style="font-size:13px">{{ c.unit }}</span></span>
+            <span style="font-size:12px;font-variant-numeric:tabular-nums;opacity:.8">{{ c.delta }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:-14px">
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <span style="font-size:12px;color:var(--color-neutral-700);margin-right:4px">Estimaciones de % grasa</span>
+          <sc-for list="{{ estPills }}" as="e" hint-placeholder-count="3"><span style="font-size:12px;padding:5px 12px;border-radius:999px;background:{{ e.bg }};color:{{ e.fg }};box-shadow:var(--shadow-sm);font-variant-numeric:tabular-nums;white-space:nowrap;flex:none"><strong>{{ e.val }}</strong> · {{ e.label }}</span></sc-for>
+        </div>
+        <p style="margin:0;font-size:12px;color:var(--color-neutral-700)">{{ methodNote }}</p>
+      </div>
+
+      <section style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:24px;display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center">
+          <div style="margin-right:auto;display:flex;flex-direction:column;gap:2px"><span style="font-weight:800;font-size:20px">Evolución</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ chartAxis }}</span></div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+            <sc-for list="{{ rangeSeg }}" as="o" hint-placeholder-count="3"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:7px 14px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ metGroups }}" as="mg" hint-placeholder-count="2">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+              <span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-neutral-700);width:96px;flex:none">{{ mg.label }}</span>
+              <sc-for list="{{ mg.items }}" as="mi" hint-placeholder-count="6"><button onClick="{{ mi.toggle }}" style="font:inherit;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:5px 12px 5px 9px;border-radius:999px;border:1.5px solid {{ mi.bd }};background:{{ mi.bg }};color:{{ mi.fg }};cursor:pointer"><span style="width:9px;height:9px;border-radius:50%;background:{{ mi.dot }}"></span>{{ mi.label }}</button></sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{ hasChart }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:48px minmax(0,1fr);column-gap:10px;row-gap:6px">
+            <div style="position:relative;height:300px">
+              <sc-for list="{{ chartTicks }}" as="tk" hint-placeholder-count="5"><span style="position:absolute;right:0;top:{{ tk.top }};transform:translateY(-50%);font-size:11px;color:var(--color-neutral-600);font-variant-numeric:tabular-nums;white-space:nowrap">{{ tk.label }}</span></sc-for>
+            </div>
+            <div style="position:relative;height:300px;border-radius:12px">
+              {{ chartSvg }}
+              <sc-for list="{{ chartDots }}" as="d" hint-placeholder-count="0"><span style="position:absolute;left:{{ d.x }};top:{{ d.y }};width:{{ d.s }};height:{{ d.s }};border-radius:50%;background:{{ d.c }};border:2px solid #fff;box-shadow:0 1px 3px rgba(31,38,48,.25);transform:translate(-50%,-50%);pointer-events:none;box-sizing:border-box"></span></sc-for>
+              <div onMouseMove="{{ chartMove }}" onMouseLeave="{{ chartLeave }}" onTouchStart="{{ chartMove }}" onTouchMove="{{ chartMove }}" style="position:absolute;inset:0;cursor:crosshair"></div>
+              <sc-if value="{{ tipShow }}" hint-placeholder-val="{{ false }}">
+                <div style="position:absolute;top:10px;left:{{ tipLeft }};transform:{{ tipTx }};background:#fff;border-radius:14px;box-shadow:var(--shadow-md);padding:12px 14px;min-width:200px;pointer-events:none;display:flex;flex-direction:column;gap:7px;z-index:2">
+                  <span style="font-size:12px;font-weight:700">{{ tipDate }}</span>
+                  <sc-for list="{{ tipRows }}" as="tr" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:8px;font-size:12px;font-variant-numeric:tabular-nums"><span style="width:8px;height:8px;border-radius:50%;background:{{ tr.c }};flex:none"></span><span style="margin-right:auto;color:var(--color-neutral-700)">{{ tr.label }}</span><strong>{{ tr.val }}</strong><span style="color:var(--color-neutral-600);min-width:44px;text-align:right">{{ tr.delta }}</span></div></sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div></div>
+            <div style="position:relative;height:18px">
+              <sc-for list="{{ chartX }}" as="xl" hint-placeholder-count="5"><span style="position:absolute;left:{{ xl.left }};transform:translateX(-50%);font-size:11px;color:var(--color-neutral-600);white-space:nowrap">{{ xl.label }}</span></sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px">
+        <sc-for list="{{ zoneTables }}" as="zt" hint-placeholder-count="2">
+          <div style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:18px 18px 8px;display:flex;flex-direction:column;gap:6px;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-weight:800;font-size:17px">{{ zt.title }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ zt.sub }}</span></div>
+            <div style="overflow-x:auto">
+              <table class="table" style="min-width:380px">
+                <thead><tr><th>Zona</th><th style="text-align:right">Inicio</th><th style="text-align:right">Actual</th><th style="text-align:right">vs anterior</th><th style="text-align:right">vs inicio</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ zt.rows }}" as="r" hint-placeholder-count="6">
+                    <tr><td>{{ r.label }}</td><td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--color-neutral-700)">{{ r.first }}</td><td style="text-align:right;font-variant-numeric:tabular-nums;font-weight:700">{{ r.last }}</td><td style="text-align:right;font-variant-numeric:tabular-nums;color:{{ r.fp }}">{{ r.dp }}</td><td style="text-align:right;font-variant-numeric:tabular-nums;color:{{ r.ff }}">{{ r.df }}</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="overflow-x:auto;background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:8px 16px">
+        <table class="table" style="min-width:820px">
+          <thead><tr><th>Fecha</th><th style="text-align:right">Peso</th><th style="text-align:right">% grasa</th><th style="text-align:right">Masa magra</th><th style="text-align:right">Σ6</th><th style="text-align:right">Σ8</th><th style="text-align:right">Cintura</th><th style="text-align:right">Cadera</th><th></th></tr></thead>
+          <tbody>
+            <sc-for list="{{ logRows }}" as="r" hint-placeholder-count="5">
+              <tr><td style="font-weight:600">{{ r.date }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.peso }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.bf }}<div style="font-size:11px;color:var(--color-neutral-600)">{{ r.meth }}</div></td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.lbm }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.s6 }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.s8 }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.cin }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ r.cad }}</td><td style="text-align:right"><button class="btn btn-ghost" onClick="{{ r.del }}" style="font-size:12px">{{ r.delLabel }}</button></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </sc-if>
+  </main>
+  </sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ false }}">
+<main style="padding:36px 28px 80px;max-width:1280px;width:100%;margin:0 auto;box-sizing:border-box;display:flex;flex-direction:column;gap:20px">
+  <h1 style="margin:0">Biblioteca</h1>
+  <div style="display:flex;gap:6px">
+    <sc-for list="{{ libTabs }}" as="t" hint-placeholder-count="2">
+      <button onClick="{{ t.go }}" style="font:inherit;font-weight:700;font-size:15px;padding:9px 16px;background:{{ t.bd }};border:0;border-radius:999px;color:{{ t.fg }};cursor:pointer">{{ t.label }}</button>
+    </sc-for>
+  </div>
+  <sc-if value="{{ isFoods }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+        <input class="input" placeholder="Buscar alimento" value="{{ foodQuery }}" onChange="{{ onFoodQuery }}" style="width:260px;max-width:100%">
+        <select class="input" value="{{ foodCat }}" onChange="{{ onFoodCat }}" style="width:180px">
+          <option value="">Todas las categorías</option>
+          <sc-for list="{{ cats }}" as="ct" hint-placeholder-count="6"><option value="{{ ct }}">{{ ct }}</option></sc-for>
+        </select>
+        <span style="font-size:13px;color:var(--color-neutral-700);margin-right:auto">{{ foodCount }}</span>
+        <button class="btn btn-primary" onClick="{{ toggleNewFood }}" style="min-height:36px">{{ newFoodLabel }}</button>
+      </div>
+      <sc-if value="{{ showNewFood }}" hint-placeholder-val="{{ false }}">
+        <div style="background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;align-items:end">
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700);grid-column:span 2">Nombre<input class="input" value="{{ nfName }}" onChange="{{ onNfName }}" placeholder="Ej: Yogur proteico"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Categoría<select class="input" value="{{ nfCat }}" onChange="{{ onNfCat }}"><sc-for list="{{ cats }}" as="ct" hint-placeholder-count="6"><option value="{{ ct }}">{{ ct }}</option></sc-for></select></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Kcal /100 g<input class="input" type="number" value="{{ nfK }}" onChange="{{ onNfK }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Prot /100 g<input class="input" type="number" value="{{ nfP }}" onChange="{{ onNfP }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Hidr /100 g<input class="input" type="number" value="{{ nfC }}" onChange="{{ onNfC }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Grasa /100 g<input class="input" type="number" value="{{ nfF }}" onChange="{{ onNfF }}"></label>
+          <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Alérgenos<input class="input" value="{{ nfAl }}" onChange="{{ onNfAl }}" placeholder="gluten…"></label>
+          <button class="btn btn-primary" onClick="{{ saveNewFood }}" style="min-height:36px">Guardar alimento</button>
+        </div>
+      </sc-if>
+      <div style="overflow-x:auto;background:var(--color-bg);border-radius:20px;box-shadow:var(--shadow-sm);padding:8px 16px">
+        <table class="table" style="min-width:640px">
+          <thead><tr><th>Alimento</th><th>Categoría</th><th>Macro principal</th><th style="text-align:right">Kcal</th><th style="text-align:right">P</th><th style="text-align:right">C</th><th style="text-align:right">G</th></tr></thead>
+          <tbody>
+            <sc-for list="{{ foodRows }}" as="f" hint-placeholder-count="8">
+              <tr><td style="font-weight:600">{{ f.name }} <span style="font-weight:400;font-size:12px;color:var(--color-accent-700)">{{ f.al }}</span></td><td>{{ f.cat }}</td><td><span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px;background:{{ f.mbg }};color:{{ f.mink }}">{{ f.macro }}</span></td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ f.k }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ f.p }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ f.c }}</td><td style="text-align:right;font-variant-numeric:tabular-nums">{{ f.f }}</td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ isTpls }}" hint-placeholder-val="{{ false }}">
+    <p style="margin:0;font-size:14px;color:var(--color-neutral-700);max-width:640px">Las plantillas guardan la estructura de una comida (qué alimentos van en cada macro). Al importarlas, los gramos se recalculan solos según las kcal de la comida de destino.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+      <sc-for list="{{ tplCards }}" as="t" hint-placeholder-count="3">
+        <div style="background:var(--color-bg);padding:16px;display:flex;flex-direction:column;gap:8px;border-radius:18px;box-shadow:var(--shadow-sm)">
+          <span style="font-weight:800;font-size:18px">{{ t.name }}</span>
+          <span style="font-size:13px;color:var(--color-neutral-700)">{{ t.foods }}</span>
+          <span style="font-size:12px">{{ t.meta }}</span>
+          <button class="btn btn-ghost" onClick="{{ t.del }}" style="align-self:flex-start;font-size:12px;padding-left:0">Eliminar</button>
+        </div>
+      </sc-for>
+    </div>
+    <sc-if value="{{ noTpls }}" hint-placeholder-val="{{ false }}"><p style="color:var(--color-neutral-700)">Aún no hay plantillas. Guárdalas desde cualquier comida del plan.</p></sc-if>
+  </sc-if>
+</main>
+</sc-if>
+
+<sc-if value="{{ srOpen }}" hint-placeholder-val="{{ false }}">
+<div data-noprint="1" onClick="{{ srClose }}" style="position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--color-neutral-900) 50%,transparent);display:flex;align-items:center;justify-content:center;padding:16px">
+  <div onClick="{{ stop }}" style="width:min(720px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;background:var(--color-bg);box-shadow:var(--shadow-lg);border-radius:24px;overflow:hidden">
+    <div style="padding:18px 20px 12px;display:flex;flex-direction:column;gap:12px;border-bottom:1px solid var(--color-divider)">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <div style="margin-right:auto"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700)">{{ srCtx }}</div><div style="font-weight:800;font-size:20px">Añadir alimentos</div></div>
+        <button class="btn btn-ghost" onClick="{{ srToggleCreate }}" style="font-size:13px">{{ srCreateLabel }}</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:3px;background:var(--color-neutral-200);border-radius:999px;width:fit-content">
+        <sc-for list="{{ srFilters }}" as="o" hint-placeholder-count="5"><button onClick="{{ o.pick }}" style="font:inherit;font-size:13px;padding:6px 12px;border:0;border-radius:999px;background:{{ o.bg }};color:{{ o.fg }};cursor:pointer">{{ o.label }}</button></sc-for>
+      </div>
+      <input class="input" placeholder="Buscar: pollo, arroz, aceite…" value="{{ srQuery }}" onChange="{{ onSrQuery }}" autofocus="autofocus">
+    </div>
+    <sc-if value="{{ srHasConf }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:12px 20px 0;padding:10px 14px;border-radius:14px;background:#fff1ee;border:1px solid #f4c9bf;color:#8f2a14;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span style="flex:1 1 240px"><strong>Alergia:</strong> {{ srConfText }}</span><button onClick="{{ srDropConf }}" style="font:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;border:0;background:#8f2a14;color:#fff;cursor:pointer">Quitar de la selección</button></div>
+    </sc-if>
+    <sc-if value="{{ showSrCreate }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 20px;background:var(--color-surface);display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;align-items:end;border-bottom:1px solid var(--color-divider)">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--color-neutral-700);grid-column:span 2">Nombre<input class="input" value="{{ nfName }}" onChange="{{ onNfName }}"></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--color-neutral-700)">Categoría<select class="input" value="{{ nfCat }}" onChange="{{ onNfCat }}"><sc-for list="{{ cats }}" as="ct" hint-placeholder-count="6"><option value="{{ ct }}">{{ ct }}</option></sc-for></select></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--color-neutral-700)">Kcal<input class="input" type="number" value="{{ nfK }}" onChange="{{ onNfK }}"></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--color-neutral-700)">P<input class="input" type="number" value="{{ nfP }}" onChange="{{ onNfP }}"></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--color-neutral-700)">C<input class="input" type="number" value="{{ nfC }}" onChange="{{ onNfC }}"></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--color-neutral-700)">G<input class="input" type="number" value="{{ nfF }}" onChange="{{ onNfF }}"></label>
+        <button class="btn btn-primary" onClick="{{ saveNewFood }}" style="min-height:36px">Crear</button>
+      </div>
+    </sc-if>
+    <div style="overflow-y:auto;flex:1;min-height:200px">
+      <sc-for list="{{ srResults }}" as="r" hint-placeholder-count="6">
+        <button onClick="{{ r.toggle }}" style="width:100%;display:flex;align-items:center;gap:12px;padding:10px 20px;border:0;border-bottom:1px solid var(--color-neutral-300);background:{{ r.bg }};font:inherit;color:inherit;text-align:left;cursor:pointer" style-hover="background:var(--color-neutral-100)">
+          <span style="width:20px;height:20px;flex:none;border-radius:6px;border:1.5px solid {{ r.ring }};background:{{ r.box }};color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;box-sizing:border-box">{{ r.check }}</span>
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <span style="display:flex;gap:8px;align-items:center"><span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:{{ r.mbg }};color:{{ r.mink }};flex:none">{{ r.mlabel }}</span><span style="font-weight:600;font-size:14px">{{ r.name }}</span><sc-if value="{{ r.flag }}" hint-placeholder-val="{{ false }}"><span class="tag tag-danger" style="padding:1px 7px;font-size:10px">Alergia</span></sc-if></span>
+            <span style="font-size:12px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">{{ r.meta }}</span>
+          </span>
+          <span style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">{{ r.kcal }}</span>
+        </button>
+      </sc-for>
+      <sc-if value="{{ srNone }}" hint-placeholder-val="{{ false }}"><p style="padding:24px 20px;color:var(--color-neutral-700)">Sin resultados. Puedes crearlo con «Crear alimento».</p></sc-if>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:12px 20px;border-top:1px solid var(--color-divider)">
+      <span style="font-size:13px;margin-right:auto;font-variant-numeric:tabular-nums">{{ srCount }}</span>
+      <button class="btn btn-secondary" onClick="{{ srClose }}">Cancelar</button>
+      <button class="btn btn-primary" onClick="{{ srAdd }}">Añadir selección</button>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<sc-if value="{{ tdOpen }}" hint-placeholder-val="{{ false }}">
+<div data-noprint="1" onClick="{{ tdClose }}" style="position:fixed;inset:0;z-index:50;background:color-mix(in srgb,var(--color-neutral-900) 50%,transparent);display:flex;align-items:center;justify-content:center;padding:16px">
+  <div onClick="{{ stop }}" style="width:min(480px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;gap:14px;padding:24px;background:var(--color-bg);box-shadow:var(--shadow-lg);box-sizing:border-box;border-radius:24px">
+    <div style="font-weight:800;font-size:20px">{{ tdTitle }}</div>
+    <sc-if value="{{ tdIsSave }}" hint-placeholder-val="{{ false }}">
+      <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--color-neutral-700)">Nombre de la plantilla<input class="input" value="{{ tdName }}" onChange="{{ onTdName }}"></label>
+      <div style="display:flex;justify-content:flex-end;gap:8px"><button class="btn btn-secondary" onClick="{{ tdClose }}">Cancelar</button><button class="btn btn-primary" onClick="{{ tdSave }}">Guardar plantilla</button></div>
+    </sc-if>
+    <sc-if value="{{ tdIsImport }}" hint-placeholder-val="{{ false }}">
+      <span style="font-size:13px;color:var(--color-neutral-700)">Reemplaza el contenido de la comida. Los gramos se ajustan a sus kcal.</span>
+      <div style="overflow-y:auto;border-top:1px solid var(--color-divider)">
+        <sc-for list="{{ tdList }}" as="t" hint-placeholder-count="3">
+          <button onClick="{{ t.pick }}" style="width:100%;display:flex;flex-direction:column;gap:2px;padding:12px 0;border:0;border-bottom:1px solid var(--color-divider);background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer" style-hover="background:var(--color-neutral-100)">
+            <span style="font-weight:700">{{ t.name }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ t.foods }}</span>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ tdEmpty }}" hint-placeholder-val="{{ false }}"><p style="color:var(--color-neutral-700);margin:0">No hay plantillas guardadas.</p></sc-if>
+      <div style="display:flex;justify-content:flex-end"><button class="btn btn-secondary" onClick="{{ tdClose }}">Cerrar</button></div>
+    </sc-if>
+  </div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const CATS=['Carnes','Pescados y mariscos','Huevos','Lácteos','Cereales','Tubérculos','Legumbres','Verduras','Frutas','Frutos secos','Cremas de frutos secos','Aceites','Mermeladas','Suplementos'];
+const REMAP={f1:'db54',f2:'db51',f3:'db63',f5:'db229',f6:'db240',f7:'db201',f9:'db149',f10:'db145',f11:'db184',f15:'db69',f16:'db74',f18:'db90',f19:'db97',f21:'db292',f22:'db295',f23:'db276',f25:'db128',f27:'db113',f28:'db251',f29:'db260',f30:'db132',f31:'db252',f33:'db138',f34:'db134',f35:'db101',f36:'db10'};
+const baseFoods=()=>window.CF_FOODS||[];
+const FA=[['sedentario',1.2,'Sedentario','Poco ejercicio, trabajo de escritorio'],['poco_activo',1.375,'Poco activo','Ejercicio ligero 1–3 días/semana'],['moderadamente_activo',1.55,'Moderadamente activo','Ejercicio moderado 3–5 días/semana'],['muy_activo',1.725,'Muy activo','Ejercicio intenso 6–7 días/semana'],['extremadamente_activo',1.9,'Extremadamente activo','Entreno diario + trabajo físico']];
+const JOB=[['sedentario',0,'Sedentario','Oficina, escritorio, ordenador'],['poco_activo',100,'Poco activo','Trabajo mixto, algo de movimiento'],['activo',200,'Activo','De pie, movimiento constante'],['muy_activo',400,'Muy activo','Trabajo físico intenso']];
+const DESPL={bajo:0,medio:80,alto:160},FIDG={bajo:0,medio:70,alto:150};
+const SLOTS=[['prot','Proteína','P','p'],['carb','Hidratos','C','c'],['fat','Grasas','G','f'],['veg','Verdura / fruta','V','']];
+const SW={prot:'var(--prot)',carb:'var(--carb)',fat:'var(--fat)',veg:'var(--veg)'};
+const MBG={prot:'var(--prot-bg)',carb:'var(--carb-bg)',fat:'var(--fat-bg)',veg:'var(--veg-bg)'};
+const MINK={prot:'var(--prot-ink)',carb:'var(--carb-ink)',fat:'var(--fat-ink)',veg:'var(--veg-ink)'};
+const SWFG=MINK;
+const LS='ecf-manager-v4';
+const PL=[['tri','Tríceps'],['bic','Bíceps'],['sub','Subescapular'],['pec','Pectoral'],['axi','Axilar medio'],['sup','Cresta ilíaca / suprailíaco'],['spn','Supraespinal'],['abd','Abdominal'],['mus','Muslo anterior'],['pan','Pantorrilla medial']];
+const PER=[['cuello','Cuello'],['hombros','Hombros'],['pecho','Pecho / tórax'],['brazo','Brazo relajado'],['brazoc','Brazo contraído'],['antebrazo','Antebrazo'],['muneca','Muñeca'],['cintura','Cintura (mínima)'],['abdomen','Abdomen (ombligo)'],['cadera','Cadera (máxima)'],['muslos','Muslo superior'],['muslo','Muslo medio'],['pantorrilla','Pantorrilla']];
+const PROTO={jp3:m=>m?['pec','abd','mus']:['tri','sup','mus'],jp7:()=>['pec','axi','tri','sub','abd','sup','mus'],dw:()=>['bic','tri','sub','sup'],fk:()=>['tri','sub','sup','abd']};
+const PNAME={jp3:'Jackson-Pollock 3',jp7:'Jackson-Pollock 7',dw:'Durnin-Womersley',fk:'Faulkner',navy:'US Navy'};
+const S6=['tri','sub','spn','abd','mus','pan'],S8=['tri','bic','sub','sup','spn','abd','mus','pan'];
+const PAL=['#1180c2','#e8826e','#4fb487','#9580dc','#d9a92c','#df79a3','#3d4f63','#5ec0e6'];
+const MET=[['w','Peso','kg',1,'c'],['bf','% grasa','%',1,'c'],['lbm','Masa magra','kg',1,'c'],['fm','Masa grasa','kg',1,'c'],['ffmi','FFMI','',1,'c'],['s6','Σ6 pliegues','mm',0,'c'],['s8','Σ8 pliegues','mm',0,'c'],
+ ['cintura','Cintura','cm',1,'p'],['abdomen','Abdomen','cm',1,'p'],['cadera','Cadera','cm',1,'p'],['pecho','Pecho','cm',1,'p'],['hombros','Hombros','cm',1,'p'],['brazo','Brazo relajado','cm',1,'p'],['brazoc','Brazo contraído','cm',1,'p'],['muslo','Muslo medio','cm',1,'p'],['pantorrilla','Pantorrilla','cm',1,'p'],['bcorr','Brazo corregido','cm',1,'p'],['mcorr','Muslo corregido','cm',1,'p']];
+const METM={};MET.forEach(m=>{METM[m[0]]=m;});
+const DAYS=['L','M','X','J','V','S','D'],DAYSS=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'],DAYSF=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const daysLabel=d=>{const a=d.slice().sort();return a.length===7?'Todos los días':a.length?a.map(i=>DAYSS[i]).join(' · '):'Sin días asignados';};
+const TRAINER_PHONE='+34 627 547 983';
+const h32=s=>{let h=0;for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0;}return h;};
+function ensureMenus(n){if(!n.menus||!n.menus.length){n.menus=[{id:uid(),name:'Menú semanal',days:[0,1,2,3,4,5,6],meals:JSON.parse(JSON.stringify(n.meals))}];}if(!n.menus.find(m=>m.id===n.activeMenu))n.activeMenu=n.menus[0].id;}
+function mealsOf(c){if(c.planMode!=='closed'||!c.menus||!c.menus.length)return c.meals;const m=c.menus.find(x=>x.id===c.activeMenu)||c.menus[0];return m.meals;}
+const fx=(x,d)=>x==null||isNaN(x)?'—':x.toFixed(d).replace('.',',');
+const fd=s=>new Date(s+'T00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+const iso=t=>new Date(t).toISOString().slice(0,10);
+const sgn=(df,d)=>(df>0?'+':df<0?'−':'±')+fx(Math.abs(df),d);
+function genLogs(n,step,a,b){
+  const out=[],now=Date.now()-2*86400000;
+  for(let i=0;i<n;i++){const e={id:'l'+i+Math.random().toString(36).slice(2,6),date:iso(now-(n-1-i)*step*86400000),pl:{},per:{}};
+    Object.keys(a).forEach(k=>{const j=(i>0&&i<n-1)?Math.sin(i*2.3+k.length)*(Math.abs(b[k]-a[k])*0.1+0.15):0;const val=Math.round((a[k]+(b[k]-a[k])*i/(n-1)+j)*10)/10;
+      if(k==='peso')e.peso=val;else if(PL.some(p=>p[0]===k))e.pl[k]=val;else e.per[k]=val;});
+    out.push(e);}
+  return out;
+}
+function computeComp(l,cl){
+  const m=cl.calc.sexo==='hombre',age=num(cl.calc.edad),h=num(cl.calc.altura),w=num(l.peso),pl=l.pl||{},per=l.per||{};
+  const has=ks=>ks.every(k=>num(pl[k])>0),sm=ks=>ks.reduce((a,k)=>a+num(pl[k]),0),siri=D=>495/D-450,est={};
+  const k3=PROTO.jp3(m);if(has(k3)){const S=sm(k3);est.jp3=siri(m?1.10938-0.0008267*S+0.0000016*S*S-0.0002574*age:1.0994921-0.0009929*S+0.0000023*S*S-0.0001392*age);}
+  const k7=PROTO.jp7();if(has(k7)){const S=sm(k7);est.jp7=siri(m?1.112-0.00043499*S+0.00000055*S*S-0.00028826*age:1.097-0.00046971*S+0.00000056*S*S-0.00012828*age);}
+  if(has(PROTO.dw())){const S=sm(PROTO.dw());const b=age<20?0:age<30?1:age<40?2:age<50?3:4;
+    const cf=(m?[[1.1620,0.0630],[1.1631,0.0632],[1.1422,0.0544],[1.1620,0.0700],[1.1715,0.0779]]:[[1.1549,0.0678],[1.1599,0.0717],[1.1423,0.0632],[1.1333,0.0612],[1.1339,0.0645]])[b];
+    est.dw=siri(cf[0]-cf[1]*Math.log10(S));}
+  if(has(PROTO.fk()))est.fk=sm(PROTO.fk())*0.153+5.783;
+  const cin=num(per.cintura),cad=num(per.cadera),cue=num(per.cuello);
+  if(h&&cin&&cue){if(m&&cin>cue)est.navy=siri(1.0324-0.19077*Math.log10(cin-cue)+0.15456*Math.log10(h));else if(!m&&cad&&cin+cad>cue)est.navy=siri(1.29579-0.35004*Math.log10(cin+cad-cue)+0.221*Math.log10(h));}
+  const pref=cl.proto||'jp3',method=[pref,'jp7','jp3','dw','fk','navy'].find(k=>est[k]!=null)||null;
+  const bf=method?est[method]:null,fm=bf!=null&&w?w*bf/100:null,lbm=fm!=null?w-fm:null;
+  const corr=(g,f)=>num(per[g])&&num(pl[f])?num(per[g])-Math.PI*num(pl[f])/10:null;
+  const o={w:w||null,bf,method,est,fm,lbm,ffmi:lbm!=null&&h?lbm/Math.pow(h/100,2):null,s6:has(S6)?sm(S6):null,s8:has(S8)?sm(S8):null,
+    whtr:cin&&h?cin/h:null,icc:cin&&cad?cin/cad:null,bcorr:corr('brazo','tri'),mcorr:corr('muslo','mus'),pcorr:corr('pantorrilla','pan'),pl,per};
+  PER.forEach(([k])=>{o[k]=num(per[k])||null;});
+  return o;
+}
+const niceStep=r=>{const p=Math.pow(10,Math.floor(Math.log10(r)));const n=r/p;return (n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p;};
+function overlay(comps,sel){
+  const W=1000,H=300,PT=16,PB=16,t0=comps[0].t,t1=comps[comps.length-1].t;
+  const X=t=>t1===t0?W/2:30+(t-t0)/(t1-t0)*(W-60),single=sel.length===1;
+  const ser=sel.map((k,i)=>{const pts=comps.map((x,j)=>({j,t:x.t,raw:x.c[k]})).filter(p=>p.raw!=null);const v0=pts.length?pts[0].raw:null;
+    pts.forEach(p=>{p.y=single?p.raw:(v0?(p.raw-v0)/Math.abs(v0)*100:0);});return {k,meta:METM[k],color:PAL[i%PAL.length],pts,v0};});
+  const ys=[].concat(...ser.map(s=>s.pts.map(p=>p.y)));
+  let mn=ys.length?Math.min(...ys):0,mx=ys.length?Math.max(...ys):1;
+  if(!single){mn=Math.min(mn,0);mx=Math.max(mx,0);}
+  if(mx-mn<1e-6){mn-=1;mx+=1;}
+  const step=niceStep((mx-mn)/4);mn=Math.floor(mn/step-1e-9)*step;mx=Math.ceil(mx/step+1e-9)*step;
+  const Y=v=>PT+(1-(v-mn)/(mx-mn))*(H-PT-PB),ticks=[];for(let v=mn;v<=mx+step/2;v+=step)ticks.push(Math.abs(v)<1e-9?0:v);
+  return {X,Y,ser,ticks,single,W,H,step};
+}
+const uid=()=>Math.random().toString(36).slice(2,9);
+const R=Math.round;
+const r5=v=>v<=0?0:Math.max(5,Math.round(v/5)*5);
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n;};
+const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const mainMacro=f=>{if(f.cat==='Verduras')return 'veg';if(f.mm)return f.mm;const a=f.p*4,b=f.c*4,c=f.f*9;return a>=b&&a>=c?'prot':b>=c?'carb':'fat';};
+const MLBL={prot:'Proteína',carb:'Hidratos',fat:'Grasa',veg:'Verdura'};
+const it=(fid,pct)=>({id:uid(),fid:REMAP[fid]||fid,pct:pct==null?50:pct});
+const vg=(fid,g)=>({id:uid(),fid:REMAP[fid]||fid,g});
+const opt=(p,c,f,v)=>({id:uid(),prot:p||[],carb:c||[],fat:f||[],veg:v||[]});
+const meal=(name,pct,opts)=>({id:uid(),name,pct,split:false,pp:pct,pc:pct,pf:pct,options:opts||[opt()]});
+const baseCalc=()=>({sexo:'hombre',edad:30,peso:75,altura:178,grasa:'',fa:'sedentario',trabajo:'sedentario',pie:0,despl:'bajo',hobbies:0,fidget:'bajo',adj:'mant',adjPct:15});
+const baseTg=()=>({kcalMode:'calc',kcalManual:2500,macroMode:'gkg',pg:2,fg:0.9,pp:30,pc:50,pf:20});
+const newClient=()=>({id:uid(),name:'',allergies:'',notes:'',updated:Date.now(),calc:baseCalc(),tg:baseTg(),proto:'jp3',logs:[],planMode:'open',meals:[meal('Desayuno',25),meal('Comida',35),meal('Merienda',15),meal('Cena',25)]});
+function seed0(){
+  const d=86400000,now=Date.now();
+  return [
+    {id:'c1',name:'Laura Martín',allergies:'lactosa',notes:'Pesar los alimentos en crudo.\nBeber 2,5 L de agua al día.',updated:now-d*1,calc:{sexo:'mujer',edad:29,peso:62,altura:166,grasa:24,fa:'moderadamente_activo',trabajo:'poco_activo',pie:1,despl:'medio',hobbies:2,fidget:'medio',adj:'deficit',adjPct:15},tg:{kcalMode:'calc',kcalManual:1900,macroMode:'gkg',pg:2,fg:0.9,pp:30,pc:45,pf:25},proto:'jp7',logs:genLogs(6,14,{peso:64.8,tri:22,bic:9,sub:15,pec:9,axi:12,sup:18,spn:14,abd:21,mus:30,pan:18,cuello:32,hombros:104,pecho:90,brazo:28,brazoc:29.5,antebrazo:23.5,muneca:15,cintura:74,abdomen:82,cadera:99,muslos:60,muslo:56,pantorrilla:35.5},{peso:61.9,tri:18,bic:7,sub:12.5,pec:7,axi:9.5,sup:13.5,spn:10.5,abd:16,mus:25,pan:15,cuello:31.5,hombros:103,pecho:88.5,brazo:27.5,brazoc:29.5,antebrazo:23.5,muneca:15,cintura:70,abdomen:77,cadera:96.5,muslos:58,muslo:54,pantorrilla:35}),planMode:'open',meals:[
+      meal('Desayuno',25,[opt([it('f10'),it('f2')],[it('f16'),it('f18')],[it('f35')],[vg('f27',100)]),opt([it('f9')],[it('f18')],[it('f36')],[vg('f30',100)])]),
+      meal('Comida',35,[opt([it('f1'),it('f5'),it('f3')],[it('f15'),it('f21'),it('f23')],[it('f36')],[vg('f28',150)])]),
+      meal('Merienda',15,[opt([it('f7')],[it('f19'),it('f25')],[it('f34')],[])]),
+      meal('Cena',25,[opt([it('f5'),it('f9')],[it('f22')],[it('f36')],[vg('f31',150),vg('f30',100)])])]},
+    {id:'c2',name:'Carlos Ruiz',allergies:'',notes:'Comida post-entreno: priorizar hidratos.',updated:now-d*3,calc:{sexo:'hombre',edad:34,peso:82,altura:181,grasa:16,fa:'muy_activo',trabajo:'sedentario',pie:0,despl:'bajo',hobbies:0,fidget:'bajo',adj:'superavit',adjPct:10},tg:{kcalMode:'calc',kcalManual:3000,macroMode:'gkg',pg:2,fg:1,pp:30,pc:50,pf:20},proto:'jp7',logs:genLogs(5,21,{peso:79.6,tri:10,bic:4.5,sub:12,pec:9,axi:10,sup:14,spn:9,abd:17,mus:12,pan:7,cuello:39,hombros:118,pecho:102,brazo:35,brazoc:38,antebrazo:29,muneca:17.5,cintura:83,abdomen:86,cadera:97,muslos:58,muslo:57,pantorrilla:38},{peso:82.1,tri:10,bic:4.5,sub:12.5,pec:9.5,axi:10.5,sup:14,spn:9.5,abd:17.5,mus:12,pan:7,cuello:39.5,hombros:121,pecho:105,brazo:36.5,brazoc:40,antebrazo:30,muneca:17.5,cintura:84,abdomen:87,cadera:98,muslos:60,muslo:59,pantorrilla:38.5}),planMode:'closed',meals:[
+      meal('Desayuno',20,[opt([it('f9',40),it('f10',60)],[it('f16',70),it('f25',30)],[],[])]),
+      meal('Comida',35,[opt([it('f1')],[it('f15')],[it('f36')],[vg('f28',200)]),opt([it('f3')],[it('f21')],[it('f36')],[vg('f31',200)])]),
+      meal('Merienda',15,[opt([it('f11')],[it('f19')],[it('f33')],[])]),
+      meal('Cena',30,[opt([it('f6')],[it('f22')],[],[vg('f29',150)])])]},
+    {...newClient(),id:'c3',name:'Marta Gil',updated:now-d*6,calc:{...baseCalc(),sexo:'mujer',edad:45,peso:70,altura:162,fa:'poco_activo',adj:'deficit',adjPct:20}},
+    {...newClient(),id:'c4',name:'Diego Sanz',allergies:'gluten',updated:now-d*12,calc:{...baseCalc(),edad:22,peso:68,altura:175,fa:'muy_activo'},tg:{...baseTg(),kcalMode:'manual',kcalManual:2800,macroMode:'pct',pp:25,pc:55,pf:20}}
+  ];
+}
+function seed(){const a=seed0(),c=a.find(x=>x.id==='c2'),l=a.find(x=>x.id==='c1');
+  const mk=(name,days,fn)=>{const ms=JSON.parse(JSON.stringify(c.meals));ms.forEach(m=>{m.id=uid();});if(fn)fn(ms);return {id:uid(),name,days,meals:ms};};
+  c.menus=[mk('Menú A',[0,2,4]),mk('Menú B',[1,3],ms=>{ms[1].options=[opt([it('f5')],[it('f23')],[it('f36')],[vg('f30',150)])];}),mk('Fin de semana',[5,6],ms=>{ms[3].cheat=true;})];
+  c.activeMenu=c.menus[0].id;c.email='carlos.ruiz@email.com';c.phone='+34 600 123 456';l.email='laura.martin@email.com';l.phone='+34 611 222 333';
+  return a;}
+const seedTpls=()=>[{id:'t1',name:'Desayuno de avena',opts:[opt([it('f10')],[it('f16')],[it('f35')],[vg('f27',80)])]},{id:'t2',name:'Pollo con arroz',opts:[opt([it('f1')],[it('f15')],[it('f36')],[vg('f28',150)])]}];
+
+function computeCalc(cl){
+  const d=cl.calc,w=num(d.peso),h=num(d.altura),a=num(d.edad),m=d.sexo==='hombre',bf=num(d.grasa);
+  const band=a<30?0:a<60?1:2;
+  const fao=(m?[[15.3,679],[11.6,879],[13.5,487]]:[[14.7,496],[8.7,829],[10.5,596]])[band];
+  const ox=(m?[[16,545],[14.2,593],[13.5,514]]:[[13.1,558],[9.74,694],[10.1,569]])[band];
+  const rows=[['Mifflin-St Jeor',10*w+6.25*h-5*a+(m?5:-161)],['Harris-Benedict',m?88.362+13.397*w+4.799*h-5.677*a:447.593+9.247*w+3.098*h-4.33*a],['FAO/OMS/UNU',fao[0]*w+fao[1]],['Oxford (Henry)',ox[0]*w+ox[1]]];
+  if(bf>0){const lbm=w*(1-bf/100);rows.push(['Cunningham',500+22*lbm],['Katch-McArdle',370+21.6*lbm]);}
+  const tmb=rows.reduce((s,r)=>s+r[1],0)/rows.length;
+  const fa=FA.find(x=>x[0]===d.fa)||FA[0];
+  const job=JOB.find(x=>x[0]===d.trabajo)||JOB[0];
+  const neat=[['Trabajo · '+job[2].toLowerCase(),job[1]],['De pie extra · '+num(d.pie)+' h/día',R(num(d.pie)*8)],['Desplazamientos · '+d.despl,DESPL[d.despl]||0],['Hobbies · '+num(d.hobbies)+' h/semana',R(num(d.hobbies)*180/7)],['Fidgeting · '+d.fidget,FIDG[d.fidget]||0]];
+  const neatAdd=neat.reduce((s,r)=>s+r[1],0);
+  const gastoFA=tmb*fa[1],maint=gastoFA+neatAdd;
+  const adj=d.adj==='deficit'?-num(d.adjPct):d.adj==='superavit'?num(d.adjPct):0;
+  return {rows,tmb,fa,gastoFA,neat,neatAdd,maint,adj,target:Math.round(maint*(1+adj/100)/10)*10};
+}
+function computeTargets(cl,cc){
+  const t=cl.tg,w=num(cl.calc.peso)||70,k=t.kcalMode==='calc'?cc.target:num(t.kcalManual);
+  let p,f,c;
+  if(t.macroMode==='gkg'){p=w*num(t.pg);f=w*num(t.fg);c=(k-p*4-f*9)/4;}else{p=k*num(t.pp)/400;c=k*num(t.pc)/400;f=k*num(t.pf)/900;}
+  return {k,p:R(p),f:R(f),c:R(Math.max(0,c)),cRaw:c,w};
+}
+function mealTarget(ml,T){
+  const sp=ml.split?num(ml.pp):num(ml.pct),sc=ml.split?num(ml.pc):num(ml.pct),sf=ml.split?num(ml.pf):num(ml.pct);
+  const p=T.p*sp/100,c=T.c*sc/100,f=T.f*sf/100;return {p,c,f,k:p*4+c*4+f*9};
+}
+function solve(o,t,mode,FM){
+  const S={};
+  SLOTS.forEach(([k])=>{S[k]=(o[k]||[]).map(x=>({...x,food:FM[x.fid]})).filter(x=>x.food);});
+  S.veg.forEach(x=>{x.g=num(x.g);});
+  const sum=(arr,m)=>arr.reduce((a,x)=>a+x.g*x.food[m]/100,0);
+  const vP=sum(S.veg,'p'),vC=sum(S.veg,'c'),vF=sum(S.veg,'f');
+  const tot={k:0,p:0,c:0,f:0};
+  const addTot=(x,w)=>['k','p','c','f'].forEach(m=>{tot[m]+=x.g*x.food[m]/100*(w==null?1:w);});
+  const key={prot:'p',carb:'c',fat:'f'};
+  if(mode==='open'){
+    const avg=(s,m)=>S[s].length?sum(S[s],m)/S[s].length:0;
+    const size=(s,target)=>{const m=key[s];S[s].forEach(x=>{const v=x.food[m];x.low=v<2;x.g=x.low?0:Math.max(0,target)/v*100;});};
+    ['prot','carb','fat'].forEach(s=>S[s].forEach(x=>{x.g=0;}));
+    for(let i=0;i<8;i++){size('prot',t.p-vP-avg('carb','p')-avg('fat','p'));size('carb',t.c-vC-avg('prot','c')-avg('fat','c'));size('fat',t.f-vF-avg('prot','f')-avg('carb','f'));}
+    ['prot','carb','fat'].forEach(s=>{S[s].forEach(x=>{x.g=r5(x.g);});S[s].forEach(x=>addTot(x,1/S[s].length));});
+  }else{
+    ['prot','carb','fat'].forEach(s=>{const ps=S[s].reduce((a,x)=>a+num(x.pct),0);S[s].forEach(x=>{x.sh=ps>0?num(x.pct)/ps:1/S[s].length;x.g=0;});});
+    const share=(s,target)=>{const m=key[s];S[s].forEach(x=>{const v=x.food[m];x.low=v<2;x.g=x.low?0:Math.max(0,target*x.sh)/v*100;});};
+    for(let i=0;i<8;i++){share('prot',t.p-vP-sum(S.carb,'p')-sum(S.fat,'p'));share('carb',t.c-vC-sum(S.prot,'c')-sum(S.fat,'c'));share('fat',t.f-vF-sum(S.prot,'f')-sum(S.carb,'f'));}
+    ['prot','carb','fat'].forEach(s=>S[s].forEach(x=>{x.g=r5(x.g);addTot(x);}));
+  }
+  S.veg.forEach(x=>addTot(x));
+  return {S,tot};
+}
+function clientTotals(cl,T,FM){
+  const tot={k:0,p:0,c:0,f:0};
+  mealsOf(cl).forEach(ml=>{const r=ml.cheat?mealTarget(ml,T):solve(ml.options[0]||opt(),mealTarget(ml,T),cl.planMode,FM).tot;['k','p','c','f'].forEach(m=>tot[m]+=r[m]);});
+  return tot;
+}
+
+class Component extends DCLogic {
+  state={view:'clients',tab:'calc',libTab:'foods',clients:seed(),foods:[],tpls:seedTpls(),activeId:null,clientQuery:'',confirmDel:null,savedAt:null,
+    sr:null,srQuery:'',srFilter:'all',srSel:[],srCreate:false,
+    nf:{name:'',cat:'Carnes',k:'',p:'',c:'',f:'',al:''},showNewFood:false,foodQuery:'',foodCat:'',
+    td:null,tdName:'',shopDays:7,logForm:null,confirmLog:null,auth:'checking',loginEmail:'elcientifitness@gmail.com',loginPass:'',loginErr:null,syncErr:false};
+  componentDidMount(){
+    setTimeout(()=>this.initCloud(0),0);
+    if(!window.CF_FOODS){this._iv=setInterval(()=>{if(window.CF_FOODS){clearInterval(this._iv);this.forceUpdate();}},100);}
+    try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d&&d.clients)this.setState({clients:d.clients.map(c=>{if(c.planMode==='closed'&&!(c.menus&&c.menus.length)){c=JSON.parse(JSON.stringify(c));ensureMenus(c);}return c;}),foods:d.foods||[],tpls:d.tpls||[],savedAt:d.savedAt||null});}catch(e){}
+  }
+  initCloud(tries){
+    const cfg=window.CF_CONFIG;
+    if(!cfg||!cfg.url||!cfg.key||cfg.url.indexOf('PEGA')>=0){this.setState({auth:'local'});return;}
+    if(!window.supabase){if((tries||0)>60){this.setState({auth:'local'});return;}setTimeout(()=>this.initCloud((tries||0)+1),100);return;}
+    this.sb=window.supabase.createClient(cfg.url,cfg.key);
+    this.sb.auth.getSession().then(({data})=>{if(data&&data.session)this.afterLogin(data.session);else this.setState({auth:'out'});});
+  }
+  afterLogin(sess){
+    this.uid=sess.user.id;this.setState({auth:'loading',loginErr:null});
+    this.sb.from('cf_state').select('data,updated_at').eq('user_id',this.uid).maybeSingle().then(({data,error})=>{
+      if(error){this.setState({auth:'out',loginErr:'No se pudo leer la base de datos: '+error.message});return;}
+      if(data&&data.data&&data.data.clients){const d=data.data;this._skip=true;this.setState({clients:d.clients,foods:d.foods||[],tpls:d.tpls||[],savedAt:Date.parse(data.updated_at)||Date.now()});}
+      this._cloud=true;this.setState({auth:'in'});
+      if(!data)this.pushCloud();
+    });
+  }
+  pushCloud(){
+    if(!this._cloud||!this.sb)return;const s=this.state;
+    this.sb.from('cf_state').upsert({user_id:this.uid,data:{clients:s.clients,foods:s.foods,tpls:s.tpls},updated_at:new Date().toISOString()}).then(({error})=>{this.setState({syncErr:!!error,savedAt:Date.now()});});
+  }
+  doLogin(){
+    const s=this.state;if(!this.sb)return;this.setState({loginErr:null,auth:'loading'});
+    this.sb.auth.signInWithPassword({email:s.loginEmail.trim(),password:s.loginPass}).then(({data,error})=>{if(error){this.setState({auth:'out',loginErr:'Email o contraseña incorrectos.'});return;}this.afterLogin(data.session);});
+  }
+  componentDidUpdate(pp,ps){
+    const s=this.state;
+    if(ps.clients!==s.clients||ps.foods!==s.foods||ps.tpls!==s.tpls){
+      clearTimeout(this._t);
+      if(this._skip){this._skip=false;return;}
+      this._t=setTimeout(()=>{this.pushCloud();const at=Date.now();try{localStorage.setItem(LS,JSON.stringify({clients:this.state.clients,foods:this.state.foods,tpls:this.state.tpls,savedAt:at}));}catch(e){}this.setState({savedAt:at});},400);
+    }
+  }
+  updC(fn){this.setState(s=>({clients:s.clients.map(c=>{if(c.id!==s.activeId)return c;const n=JSON.parse(JSON.stringify(c));fn(n);n.updated=Date.now();return n;})}));}
+  seg(opts,cur,fn){return opts.map(([v,l])=>({label:l,bg:v===cur?'var(--color-accent)':'transparent',fg:v===cur?'var(--color-bg)':'var(--color-text)',pick:()=>fn(v)}));}
+  radio(list,cur,fn,metaFn){return list.map(x=>({label:x[2],desc:x[3],meta:metaFn(x),bg:x[0]===cur?'var(--color-accent-100)':'transparent',ring:x[0]===cur?'var(--color-accent)':'var(--color-divider)',dot:x[0]===cur?'var(--color-accent)':'transparent',pick:()=>fn(x[0])}));}
+  foodMap(){const m={};baseFoods().concat(this.state.foods).forEach(f=>{m[f.id]=f;});return m;}
+  vetos(cl){return (cl&&cl.allergies||'').split(',').map(x=>norm(x.trim())).filter(Boolean);}
+  flag(f,vt){return vt.length>0&&vt.some(v=>norm(f.name).includes(v)||(f.al&&(norm(f.al).includes(v)||v.includes(norm(f.al)))));}
+  openSearch(mealId,optId,slot){this.setState({sr:{mealId,optId,slot},srQuery:'',srFilter:slot,srSel:[],srCreate:false});}
+  saveNewFood(){
+    const s=this.state,n=s.nf;if(!n.name.trim())return;
+    const f={id:'u'+uid(),cat:n.cat,name:n.name.trim(),k:num(n.k),p:num(n.p),c:num(n.c),f:num(n.f),al:n.al.trim()};
+    this.setState({foods:s.foods.concat([f]),nf:{name:'',cat:n.cat,k:'',p:'',c:'',f:'',al:''},showNewFood:false,srCreate:false,srSel:s.sr?s.srSel.concat([f.id]):s.srSel,srQuery:s.sr?f.name:s.srQuery});
+  }
+  renderVals(){
+    const s=this.state,FM=this.foodMap(),allFoods=baseFoods().concat(s.foods);
+    const v={
+      navItems:[['clients','Clientes'],['library','Biblioteca']].map(([k,l])=>({label:l,bd:(s.view===k||(k==='clients'&&s.view==='client'))?'var(--color-accent-100)':'transparent',go:()=>this.setState({view:k,confirmDel:null})})),
+      saveLabel:s.savedAt?'Guardado · '+new Date(s.savedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'Guardado local',
+      isClients:s.view==='clients',isClient:s.view==='client',isLibrary:s.view==='library',
+      stop:e=>e.stopPropagation(),cats:CATS,
+      nfName:s.nf.name,nfCat:s.nf.cat,nfK:s.nf.k,nfP:s.nf.p,nfC:s.nf.c,nfF:s.nf.f,nfAl:s.nf.al,
+      saveNewFood:()=>this.saveNewFood()
+    };
+    {const au=s.auth;v.showLogin=au==='checking'||au==='out'||au==='loading';v.loginReady=au==='out';
+      v.loginMsg=s.loginErr||(au==='out'?'Acceso solo para el entrenador.':au==='loading'?'Cargando tus datos…':'Conectando…');v.loginMsgFg=s.loginErr?'#b3361b':'var(--color-neutral-700)';
+      v.loginEmail=s.loginEmail;v.loginPass=s.loginPass;v.onLoginEmail=e=>this.setState({loginEmail:e.target.value});v.onLoginPass=e=>this.setState({loginPass:e.target.value});
+      v.onLoginKey=e=>{if(e.key==='Enter')this.doLogin();};v.doLogin=()=>this.doLogin();
+      v.showLogout=au==='in';v.doLogout=()=>{if(this.sb)this.sb.auth.signOut().then(()=>{this._cloud=false;this.setState({auth:'out',loginPass:''});});};
+      if(au==='in'){v.saveLabel=s.syncErr?'Error al sincronizar':'Sincronizado'+(s.savedAt?' · '+new Date(s.savedAt).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}):'');v.saveFg=s.syncErr?'#b3361b':'#1d6b43';}
+      else{v.saveFg='var(--color-neutral-700)';if(au==='local')v.saveLabel='Solo en este navegador';}}
+    ['name','cat','k','p','c','f','al'].forEach(k=>{v['onNf'+k.charAt(0).toUpperCase()+k.slice(1)]=e=>{const val=e.target.value;this.setState(st=>({nf:{...st.nf,[k]:val}}));};});
+
+    if(s.view==='clients'){
+      const q=norm(s.clientQuery);
+      const list=s.clients.filter(c=>!q||norm(c.name).includes(q)).sort((a,b)=>b.updated-a.updated);
+      v.clientCount=s.clients.length+' activos';v.clientQuery=s.clientQuery;v.onClientQuery=e=>this.setState({clientQuery:e.target.value});
+      v.noClients=list.length===0;
+      v.newClient=()=>{const c=newClient();this.setState(st=>({clients:[c].concat(st.clients),activeId:c.id,view:'client',tab:'calc'}));};
+      v.clientCards=list.map(c=>{const cc=computeCalc(c),T=computeTargets(c,cc);
+        const goal=c.tg.kcalMode==='manual'?'Kcal manual':c.calc.adj==='deficit'?'Déficit −'+num(c.calc.adjPct)+'%':c.calc.adj==='superavit'?'Superávit +'+num(c.calc.adjPct)+'%':'Mantenimiento';
+        return {name:c.name||'Sin nombre',goal,kcal:T.k.toLocaleString('es-ES'),mac:[['prot','P',T.p],['carb','C',T.c],['fat','G',T.f]].map(([k,l,g])=>({l:l+' '+g+' g',bg:MBG[k],fg:MINK[k]})),
+          meta:'Editado '+new Date(c.updated).toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' · '+c.meals.length+' comidas',
+          open:()=>this.setState({activeId:c.id,view:'client',tab:'calc',confirmDel:null}),
+          dup:()=>{const n=JSON.parse(JSON.stringify(c));n.id=uid();n.name=(c.name||'Cliente')+' (copia)';n.updated=Date.now();this.setState(st=>({clients:[n].concat(st.clients)}));},
+          delLabel:s.confirmDel===c.id?'¿Seguro? Eliminar':'Eliminar',
+          del:()=>{if(s.confirmDel===c.id)this.setState(st=>({clients:st.clients.filter(x=>x.id!==c.id),confirmDel:null}));else this.setState({confirmDel:c.id});}};});
+    }
+
+    const cl=s.clients.find(c=>c.id===s.activeId);
+    if(s.view==='client'&&cl){
+      const cc=computeCalc(cl),T=computeTargets(cl,cc),vt=this.vetos(cl);
+      const tot=clientTotals(cl,T,FM),inPlan=s.tab==='plan';
+      v.goClients=()=>this.setState({view:'clients'});
+      v.cName=cl.name;v.onName=e=>{const x=e.target.value;this.updC(n=>{n.name=x;});};
+      v.cAllergies=cl.allergies;v.onAllergies=e=>{const x=e.target.value;this.updC(n=>{n.allergies=x;});};
+      v.cEmail=cl.email||'';v.onEmail=e=>{const x=e.target.value;this.updC(n=>{n.email=x;});};
+      v.cPhone=cl.phone||'';v.onPhone=e=>{const x=e.target.value;this.updC(n=>{n.phone=x;});};
+      {const conf=[],why=f=>vt.find(q=>norm(f.name).includes(q)||(f.al&&(norm(f.al).includes(q)||q.includes(norm(f.al)))))||'';
+        const sets=cl.planMode==='closed'&&cl.menus&&cl.menus.length?cl.menus.map(mn=>({mn,meals:mn.meals})):[{mn:null,meals:cl.meals}];
+        if(vt.length)sets.forEach(({mn,meals})=>meals.forEach(ml=>{if(ml.cheat)return;ml.options.forEach((o,oi)=>SLOTS.forEach(([sl])=>(o[sl]||[]).forEach(x=>{const f=FM[x.fid];
+          if(f&&this.flag(f,vt))conf.push({f,why:why(f),where:(mn?mn.name+' · ':'')+ml.name+(ml.options.length>1?' '+String.fromCharCode(65+oi):''),ids:[mn&&mn.id,ml.id,o.id,sl,x.id]});})));}));
+        const rmConf=list=>this.updC(n=>{list.forEach(([mid,mlid,oid,sl,xid])=>{const meals=mid?((n.menus||[]).find(q=>q.id===mid)||{meals:[]}).meals:n.meals;const ml=meals.find(q=>q.id===mlid);const o=ml&&ml.options.find(q=>q.id===oid);if(o)o[sl]=o[sl].filter(q=>q.id!==xid);});});
+        v.hasConflicts=conf.length>0&&s.tab!=='prog';
+        v.conflictTitle=conf.length+(conf.length===1?' alimento del plan choca':' alimentos del plan chocan')+' con los vetos del cliente';
+        v.conflicts=conf.map(c=>({name:c.f.name,where:c.where,why:c.why,remove:()=>rmConf([c.ids])}));
+        v.removeAllConf=()=>rmConf(conf.map(c=>c.ids));}
+      v.tabs=[['calc','01','Necesidades'],['plan','02','Plan de comidas'],['view','03','Vista cliente'],['prog','04','Progreso']].map(([k,nm,l])=>({num:nm,label:l,bd:s.tab===k?'var(--color-accent)':'transparent',fg:s.tab===k?'#fff':'var(--color-neutral-700)',go:()=>this.setState({tab:k})}));
+      v.isCalc=s.tab==='calc';v.isPlan=inPlan;v.isView=s.tab==='view';v.isProg=s.tab==='prog';
+      if(s.tab==='prog'){
+        const proto=cl.proto||'jp3',m=cl.calc.sexo==='hombre';
+        const comps=(cl.logs||[]).slice().sort((a,b)=>a.date<b.date?-1:1).map(l=>({l,c:computeComp(l,{...cl,proto}),t:Date.parse(l.date)}));
+        const last=comps[comps.length-1],prev=comps[comps.length-2],first=comps[0];
+        v.hasLogs=comps.length>0;v.noLogs=!v.hasLogs;
+        v.lastLabel=last?'Última medición · '+fd(last.l.date)+' · '+comps.length+' registros':'Sin registros';
+        v.protoSeg=this.seg([['jp3','JP 3'],['jp7','JP 7'],['dw','Durnin-W.'],['fk','Faulkner']],proto,x=>this.updC(n=>{n.proto=x;}));
+        v.applyLabel='Usar en Necesidades';
+        v.applyToCalc=()=>{if(!last)return;this.updC(n=>{if(last.c.w)n.calc.peso=last.c.w;if(last.c.bf!=null)n.calc.grasa=+last.c.bf.toFixed(1);});this.setState({tab:'calc'});};
+        const CELLS=[['Peso','w','kg',1],['% grasa','bf','%',1],['Masa grasa','fm','kg',1],['Masa magra','lbm','kg',1],['Σ6 pliegues','s6','mm',0],['Σ8 pliegues','s8','mm',0],['FFMI','ffmi','',1],['Cintura','cintura','cm',1],['Cintura / cadera','icc','',2],['Cintura / altura','whtr','',2]];
+        v.compCells=last?CELLS.map(([l,k,u,d])=>{const a=last.c[k],b=prev?prev.c[k]:null;
+          let delta=prev?'—':'Primera medición';if(a!=null&&b!=null)delta=sgn(a-b,d)+(u?' '+u:'')+' vs '+fd(prev.l.date);
+          const hi=k==='bf';return {label:l,val:fx(a,d),unit:u,delta,bg:hi?'var(--color-accent)':'var(--color-bg)',fg:hi?'#fff':'var(--color-text)'};}):[];
+        if(last){const c=last.c;
+          v.estPills=['jp3','jp7','dw','fk','navy'].filter(k=>c.est[k]!=null).map(k=>({label:PNAME[k],val:fx(c.est[k],1)+' %',bg:k===c.method?'var(--color-accent)':'var(--color-bg)',fg:k===c.method?'#fff':'var(--color-text)'}));
+          v.methodNote=c.bf==null?'Faltan pliegues para estimar el % de grasa.':('Se usa '+PNAME[c.method]+(c.method==='navy'||c.method==='fk'?'':' + Siri')+'.'+(c.method!==proto?' Faltan pliegues para '+PNAME[proto]+'.':'')+' FFMI = masa magra / altura². Perímetro corregido = perímetro − π × pliegue.');}
+        // overlay chart
+        const rng=s.chartRange||'all',cutoff=rng==='all'||!last?-Infinity:last.t-num(rng)*86400000;
+        const rc=comps.filter(x=>x.t>=cutoff);
+        v.rangeSeg=this.seg([['all','Todo'],['180','6 meses'],['90','3 meses']],rng,x=>this.setState({chartRange:x,chartHover:null}));
+        const avail=MET.filter(q=>comps.some(x=>x.c[q[0]]!=null));
+        let sel=(s.chartSel||['w','bf','lbm']).filter(k=>avail.some(q=>q[0]===k));
+        if(!sel.length&&avail.length)sel=[avail[0][0]];
+        v.metGroups=[['c','Composición'],['p','Perímetros']].map(([gk,gl])=>({label:gl,items:avail.filter(q=>q[4]===gk).map(q=>{const i=sel.indexOf(q[0]),on=i>=0,col=on?PAL[i%PAL.length]:'var(--color-neutral-300)';
+          return {label:q[1],dot:col,bd:on?col:'var(--color-neutral-200)',bg:on?'var(--color-bg)':'transparent',fg:on?'var(--color-text)':'var(--color-neutral-700)',
+            toggle:()=>{const nx=on?sel.filter(k=>k!==q[0]):sel.concat([q[0]]);this.setState({chartSel:nx.length?nx:sel,chartHover:null});}};})})).filter(g=>g.items.length);
+        v.hasChart=rc.length>0&&sel.length>0;
+        if(v.hasChart){
+          const g=overlay(rc,sel),hov=s.chartHover!=null&&s.chartHover<rc.length?s.chartHover:null,E=React.createElement,NS={vectorEffect:'non-scaling-stroke'};
+          const kids=g.ticks.map((tv,i)=>E('line',{key:'t'+i,x1:0,x2:g.W,y1:g.Y(tv),y2:g.Y(tv),stroke:!g.single&&tv===0?'#b4bdc9':'#e9edf2',strokeWidth:1,...NS}));
+          if(hov!=null){const hx=g.X(rc[hov].t);kids.push(E('line',{key:'hv',x1:hx,x2:hx,y1:0,y2:g.H,stroke:'#8f99a8',strokeWidth:1,strokeDasharray:'4 4',...NS}));}
+          g.ser.forEach(se=>{const P=se.pts.map(p=>g.X(p.t).toFixed(1)+' '+g.Y(p.y).toFixed(1));if(!P.length)return;
+            if(g.single&&P.length>1){const yb=g.Y(g.ticks[0]).toFixed(1);kids.push(E('path',{key:'a'+se.k,d:'M'+g.X(se.pts[0].t).toFixed(1)+' '+yb+' L'+P.join(' L')+' L'+g.X(se.pts[se.pts.length-1].t).toFixed(1)+' '+yb+' Z',fill:se.color,fillOpacity:0.09,stroke:'none'}));}
+            kids.push(E('polyline',{key:'l'+se.k,points:P.join(' '),fill:'none',stroke:se.color,strokeWidth:2.5,strokeLinejoin:'round',strokeLinecap:'round',...NS}));});
+          v.chartSvg=E('svg',{viewBox:'0 0 '+g.W+' '+g.H,preserveAspectRatio:'none',style:{position:'absolute',inset:0,width:'100%',height:'100%',display:'block',overflow:'hidden'}},kids);
+          v.chartDots=[].concat(...g.ser.map(se=>se.pts.map(p=>({x:(g.X(p.t)/g.W*100)+'%',y:(g.Y(p.y)/g.H*100)+'%',c:se.color,s:p.j===hov?'14px':'10px'}))));
+          v.chartTicks=g.ticks.map(tv=>({top:(g.Y(tv)/g.H*100)+'%',label:g.single?fx(tv,METM[sel[0]][3]):(tv>0?'+':tv<0?'−':'')+fx(Math.abs(tv),g.step<1?1:0)+'%'}));
+          const every=Math.ceil(rc.length/7);
+          v.chartX=rc.map((x,j)=>({j,x})).filter(o=>o.j%every===0||o.j===rc.length-1).map(o=>({left:(g.X(o.x.t)/g.W*100)+'%',label:fd(o.x.l.date)}));
+          v.chartAxis=g.single?METM[sel[0]][1]+(METM[sel[0]][2]?' ('+METM[sel[0]][2]+')':''):'Variación respecto a la primera medición del periodo · pasa el cursor para ver valores';
+          v.chartMove=e=>{const p=e.touches&&e.touches[0]?e.touches[0]:e,r=e.currentTarget.getBoundingClientRect(),px=(p.clientX-r.left)/r.width*g.W;let bi=0,bd=1e9;rc.forEach((x,j)=>{const d=Math.abs(g.X(x.t)-px);if(d<bd){bd=d;bi=j;}});if(bi!==this.state.chartHover)this.setState({chartHover:bi});};
+          v.chartLeave=()=>this.setState({chartHover:null});
+          v.tipShow=hov!=null;
+          if(hov!=null){const hx=g.X(rc[hov].t)/g.W;v.tipLeft=(hx*100)+'%';v.tipTx=hx>0.6?'translateX(calc(-100% - 14px))':'translateX(14px)';
+            v.tipDate=new Date(rc[hov].l.date+'T00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+            v.tipRows=g.ser.map(se=>{const q=se.meta,val=rc[hov].c[se.k],df=val!=null&&se.v0!=null&&se.pts.length&&se.pts[0].j!==hov?val-se.v0:null;
+              return {c:se.color,label:q[1],val:val!=null?fx(val,q[3])+(q[2]?' '+q[2]:''):'—',delta:df==null?'':sgn(df,q[3])};});}
+        }
+        // zone tables
+        const zrow=(label,get,d,good)=>{const vals=comps.map(get);if(!vals.some(x=>x!=null))return null;const fi=vals.find(x=>x!=null),la=vals[vals.length-1],pr=vals.length>1?vals[vals.length-2]:null;
+          const col=df=>df==null||!good||Math.abs(df)<1e-9?'var(--color-neutral-700)':df<0?'#1d6b43':'#b3541e';
+          const dp=la!=null&&pr!=null?la-pr:null,dfi=la!=null&&fi!=null&&vals.length>1?la-fi:null;
+          return {label,first:fx(fi,d),last:fx(la,d),dp:dp==null?'—':sgn(dp,d),df:dfi==null?'—':sgn(dfi,d),fp:col(dp),ff:col(dfi)};};
+        v.zoneTables=[{title:'Pliegues',sub:'mm',rows:PL.map(([k,l])=>zrow(l,x=>num(x.c.pl[k])||null,1,true)).concat([zrow('Σ6 pliegues',x=>x.c.s6,0,true),zrow('Σ8 pliegues',x=>x.c.s8,0,true)]).filter(Boolean)},
+          {title:'Perímetros',sub:'cm',rows:PER.map(([k,l])=>zrow(l,x=>x.c[k],1,false)).concat([zrow('Brazo corregido',x=>x.c.bcorr,1,false),zrow('Muslo corregido',x=>x.c.mcorr,1,false),zrow('Pantorrilla corregida',x=>x.c.pcorr,1,false)]).filter(Boolean)}].filter(z=>z.rows.length);
+        v.logRows=comps.slice().reverse().map(x=>({date:fd(x.l.date)+' '+x.l.date.slice(0,4),peso:fx(x.c.w,1)+' kg',bf:x.c.bf!=null?fx(x.c.bf,1)+' %':'—',meth:x.c.method?PNAME[x.c.method]:'',lbm:x.c.lbm!=null?fx(x.c.lbm,1)+' kg':'—',s6:x.c.s6!=null?fx(x.c.s6,0)+' mm':'—',s8:x.c.s8!=null?fx(x.c.s8,0)+' mm':'—',cin:x.c.cintura?fx(x.c.cintura,1)+' cm':'—',cad:x.c.cadera?fx(x.c.cadera,1)+' cm':'—',
+          delLabel:s.confirmLog===x.l.id?'¿Eliminar?':'Eliminar',del:()=>{if(s.confirmLog===x.l.id){this.updC(n=>{n.logs=(n.logs||[]).filter(q=>q.id!==x.l.id);});this.setState({confirmLog:null});}else this.setState({confirmLog:x.l.id});}}));
+        const lf=s.logForm;v.showLogForm=!!lf;v.logFormLabel=lf?'Cerrar formulario':'Nueva medición';
+        v.toggleLogForm=()=>this.setState({logForm:lf?null:{date:iso(Date.now()),peso:last&&last.c.w?String(last.c.w):String(cl.calc.peso||''),pl:{},per:{}}});
+        if(lf){
+          const req=PROTO[proto](m);
+          const setLF=(g,k)=>e=>{const val=e.target.value;this.setState(st=>({logForm:g?{...st.logForm,[g]:{...st.logForm[g],[k]:val}}:{...st.logForm,[k]:val}}));};
+          v.lfDate=lf.date;v.onLfDate=setLF(null,'date');v.lfPeso=lf.peso;v.onLfPeso=setLF(null,'peso');
+          v.plHelp='* obligatorios para '+PNAME[proto]+'. Completa los 10 para Σ6, Σ8 y comparar fórmulas. Lado derecho, media de 2–3 tomas.';
+          v.lfPl=PL.map(([k,l])=>{const r=req.includes(k);return {label:l+(r?' *':''),fg:r?'var(--color-accent-700)':'var(--color-neutral-700)',w:r?700:400,val:lf.pl[k]||'',on:setLF('pl',k)};});
+          v.lfPer=PER.map(([k,l])=>({label:l,val:lf.per[k]||'',on:setLF('per',k)}));
+          const pc=computeComp(lf,{...cl,proto}),ests=['jp3','jp7','dw','fk','navy'].filter(k=>pc.est[k]!=null);
+          v.lfPreview=ests.length>0;
+          v.lfPreviewText='Estimación en vivo: '+ests.map(k=>PNAME[k]+' '+fx(pc.est[k],1)+' %').join(' · ')+(pc.lbm!=null?' — masa magra '+fx(pc.lbm,1)+' kg':'');
+          v.saveLog=()=>{if(!num(lf.peso)||!lf.date)return;const clean=o=>{const r={};Object.keys(o).forEach(k=>{if(num(o[k])>0)r[k]=num(o[k]);});return r;};
+            const e={id:uid(),date:lf.date,peso:num(lf.peso),pl:clean(lf.pl),per:clean(lf.per)};
+            this.updC(n=>{n.logs=(n.logs||[]).concat([e]);});this.setState({logForm:null});};
+        }
+      }
+      v.tK=T.k.toLocaleString('es-ES');
+      v.strip=[['Proteína','p','prot'],['Hidratos','c','carb'],['Grasas','f','fat']].map(([l,m,mk])=>{const tg=T[m],a=R(tot[m]),r=tg?a/tg:0,off=Math.abs(r-1)>0.05;
+        return {label:l,val:inPlan?a+' / '+tg+' g':tg+' g',w:(inPlan?Math.min(100,r*100):100)+'%',bar:SW[mk],fg:inPlan&&off?'#b3361b':'var(--color-text)'};});
+      if(inPlan)v.strip.push({label:'Plan',val:R(tot.k)+' kcal',w:Math.min(100,T.k?tot.k/T.k*100:0)+'%',bar:'var(--color-accent)',fg:'var(--color-text)'});
+      const setCalc=k=>val=>this.updC(n=>{n.calc[k]=val;});
+      const setTg=k=>val=>this.updC(n=>{n.tg[k]=val;});
+      const ev=fn=>e=>fn(e.target.value);
+      const kc=x=>R(x).toLocaleString('es-ES')+' kcal';
+      const pP=T.k?T.p*4/T.k:0,pC=T.k?T.c*4/T.k:0,pF=T.k?T.f*9/T.k:0;
+      v.macroCells=[['Proteína',T.p,pP,'prot'],['Hidratos',T.c,pC,'carb'],['Grasas',T.f,pF,'fat']].map(([l,g,pc,mk])=>({sw:SW[mk],bg:MBG[mk],fg:MINK[mk],label:l,g:g+' g',sub:(T.w?(g/T.w).toFixed(1):'0')+' g/kg · '+R(pc*100)+'%'}));
+
+      if(s.tab==='calc'){
+        const d=cl.calc;
+        Object.assign(v,{edad:d.edad,peso:d.peso,altura:d.altura,grasa:d.grasa,onEdad:ev(setCalc('edad')),onPeso:ev(setCalc('peso')),onAltura:ev(setCalc('altura')),onGrasa:ev(setCalc('grasa')),
+          sexoSeg:this.seg([['hombre','Hombre'],['mujer','Mujer']],d.sexo,setCalc('sexo')),
+          tmbRows:cc.rows.map(r=>({name:r[0],val:kc(r[1])})),tmbAvg:kc(cc.tmb),noBf:!(num(d.grasa)>0),
+          faOpts:this.radio(FA,d.fa,setCalc('fa'),x=>'× '+x[1]),gastoFA:'TMB × '+cc.fa[1]+' = '+kc(cc.gastoFA),
+          jobOpts:this.radio(JOB,d.trabajo,setCalc('trabajo'),x=>'+'+x[1]+' kcal'),
+          pie:d.pie,onPie:ev(setCalc('pie')),hobbies:d.hobbies,onHobbies:ev(setCalc('hobbies')),
+          desplSeg:this.seg([['bajo','Coche'],['medio','15–30 min a pie'],['alto','+30 min a pie']],d.despl,setCalc('despl')),
+          fidgSeg:this.seg([['bajo','Bajo'],['medio','Medio'],['alto','Alto']],d.fidget,setCalc('fidget')),
+          neatRows:cc.neat.map(r=>({label:r[0],val:'+'+r[1]+' kcal'})),neatAdd:'+'+cc.neatAdd+' kcal',
+          kcalSrcSeg:this.seg([['calc','Calculadas'],['manual','Manual']],cl.tg.kcalMode,setTg('kcalMode')),
+          isManual:cl.tg.kcalMode==='manual',isCalcSrc:cl.tg.kcalMode==='calc',kcalManual:cl.tg.kcalManual,onKcalManual:ev(setTg('kcalManual')),
+          adjSeg:this.seg([['deficit','Déficit'],['mant','Mantener'],['superavit','Superávit']],d.adj,setCalc('adj')),showAdjPct:d.adj!=='mant',adjPct:d.adjPct,onAdjPct:ev(setCalc('adjPct')),
+          macroModeSeg:this.seg([['gkg','g/kg de peso'],['pct','% de kcal']],cl.tg.macroMode,setTg('macroMode')),
+          isGkg:cl.tg.macroMode==='gkg',isPctMode:cl.tg.macroMode==='pct',
+          pg:cl.tg.pg,fg:cl.tg.fg,pp:cl.tg.pp,pc:cl.tg.pc,pf:cl.tg.pf,onPg:ev(setTg('pg')),onFg:ev(setTg('fg')),onPp:ev(setTg('pp')),onPc:ev(setTg('pc')),onPf:ev(setTg('pf')),
+          kSrcNote:cl.tg.kcalMode==='manual'?'Valor manual · calculado: '+kc(cc.target):(cc.adj===0?'Mantenimiento':(cc.adj>0?'+':'')+cc.adj+'% sobre mantenimiento'),
+          sumRows:[['TMB promedio',kc(cc.tmb),400],['× factor de actividad '+cc.fa[1],kc(cc.gastoFA),400],['+ NEAT',kc(cc.neatAdd),400],['Mantenimiento',kc(cc.maint),800],['Ajuste '+(cc.adj>0?'+':'')+cc.adj+'%',kc(cc.target-cc.maint),400]].map(r=>({label:r[0],val:r[1],w:r[2]})),
+          barP:R(pP*100)+'%',barC:R(pC*100)+'%',barF:R(pF*100)+'%',
+          etaNote:'Efecto térmico estimado de los alimentos: '+((pP*0.25+pC*0.075+pF*0.025)*100).toFixed(1)+'% (P 25% · C 7,5% · G 2,5%). Ya incluido en el factor de actividad.',
+          goPlan:()=>this.setState({tab:'plan'})});
+        const pcs=num(cl.tg.pp)+num(cl.tg.pc)+num(cl.tg.pf);
+        v.macroWarn=(cl.tg.macroMode==='pct'&&pcs!==100)||(cl.tg.macroMode==='gkg'&&T.cRaw<0);
+        v.macroWarnText=cl.tg.macroMode==='pct'?'Los porcentajes suman '+pcs+'%. Deben sumar 100%.':'Proteína y grasa superan las kcal objetivo; no quedan kcal para hidratos.';
+      }
+
+      if(s.tab==='plan'){
+        const open=cl.planMode==='open';
+        v.planModeSeg=this.seg([['open','Intercambios'],['closed','Menú cerrado']],cl.planMode,x=>this.updC(n=>{n.planMode=x;if(x==='closed')ensureMenus(n);}));
+        v.modeHelp=open?'Cada alimento de una columna es una alternativa: su cantidad cubre sola el macro de la comida.':'Los alimentos se combinan entre sí; el % reparte el macro y los gramos se ajustan teniendo en cuenta los macros cruzados.';
+        const sums=['pp','pc','pf'].map(k=>mealsOf(cl).reduce((a,m)=>a+num(m.split?m[k]:m.pct),0));
+        const ok=sums.every(x=>x===100);
+        v.distLabel=sums[0]===sums[1]&&sums[1]===sums[2]?'Reparto '+sums[0]+'%':'Reparto P '+sums[0]+'% · C '+sums[1]+'% · G '+sums[2]+'%';
+        v.distBg=ok?'var(--color-neutral-200)':'var(--color-accent-100)';v.distFg=ok?'var(--color-text)':'var(--color-accent-800)';
+        v.isClosedPlan=!open;
+        {const um2=fn=>this.updC(n=>{ensureMenus(n);fn(n);});
+        v.addMenu=()=>um2(n=>{const mm={id:uid(),name:'Menú '+String.fromCharCode(65+n.menus.length),days:[],meals:JSON.parse(JSON.stringify(mealsOf(n)))};mm.meals.forEach(q=>{q.id=uid();q.cheat=false;});n.menus.push(mm);n.activeMenu=mm.id;});
+        if(!open&&cl.menus&&cl.menus.length){const act=cl.menus.find(x=>x.id===cl.activeMenu)||cl.menus[0];
+          v.menuTabs=cl.menus.map(mn=>({name:mn.name||'Menú',days:daysLabel(mn.days),bg:mn.id===act.id?'var(--color-accent)':'var(--color-surface)',fg:mn.id===act.id?'#fff':'var(--color-text)',pick:()=>this.updC(n=>{n.activeMenu=mn.id;})}));
+          v.menuName=act.name;v.onMenuName=e=>{const x=e.target.value;um2(n=>{n.menus.find(q=>q.id===act.id).name=x;});};
+          v.dayChips=DAYS.map((dl,di)=>{const mine=act.days.includes(di),other=cl.menus.find(q=>q.id!==act.id&&q.days.includes(di));
+            return {l:dl,full:DAYSF[di]+(other?' · ahora en '+other.name:''),bg:mine?'var(--color-accent)':other?'var(--color-neutral-100)':'transparent',fg:mine?'#fff':other?'var(--color-neutral-500)':'var(--color-text)',bd:mine?'var(--color-accent)':'var(--color-neutral-300)',
+              toggle:()=>um2(n=>{n.menus.forEach(q=>{if(q.id!==act.id)q.days=q.days.filter(d=>d!==di);});const a=n.menus.find(q=>q.id===act.id);a.days=mine?a.days.filter(d=>d!==di):a.days.concat([di]).sort();})};});
+          const un=[0,1,2,3,4,5,6].filter(d=>!cl.menus.some(q=>q.days.includes(d)));
+          v.unassigned=un.length>0;v.unassignedText='Días sin menú asignado: '+un.map(d=>DAYSF[d]).join(', ')+'.';
+          v.canDelMenu=cl.menus.length>1;
+          v.delMenu=()=>um2(n=>{n.menus=n.menus.filter(q=>q.id!==act.id);n.activeMenu=n.menus[0].id;});
+          v.dupMenu=()=>um2(n=>{const a=n.menus.find(q=>q.id===act.id),cp=JSON.parse(JSON.stringify(a));cp.id=uid();cp.name=a.name+' (copia)';cp.days=[];cp.meals.forEach(q=>{q.id=uid();});n.menus.push(cp);n.activeMenu=cp.id;});
+        }else{v.menuTabs=[];v.dayChips=[];v.unassigned=false;v.canDelMenu=false;v.menuName='';}}
+        v.addMeal=()=>this.updC(n=>{mealsOf(n).push(meal('Comida '+(mealsOf(n).length+1),0));});
+        v.noMeals=mealsOf(cl).length===0;
+        v.meals=mealsOf(cl).map((ml,mi)=>{
+          const mt=mealTarget(ml,T);
+          const um=fn=>this.updC(n=>{fn(mealsOf(n).find(x=>x.id===ml.id));});
+          const setM=k=>e=>{const x=e.target.value;um(m=>{m[k]=x;});};
+          const o0=ml.options[0]||opt();
+          const r0=solve(o0,mt,cl.planMode,FM);
+          const mk=(o,sl,x)=>{const f=x.food,fl=this.flag(f,vt);
+            return {name:f.name,g:x.g,isVeg:sl==='veg',notVeg:sl!=='veg',flag:fl,bg:MBG[sl],ink:MINK[sl],
+              meta:fl?'Contiene alérgeno vetado':x.low?'No aporta '+MLBL[sl].toLowerCase():R(x.g*f.k/100)+' kcal',metaFg:fl?'#b3361b':x.low?'var(--color-accent-700)':'var(--color-neutral-700)',
+              share:x.pct,showShare:sl!=='veg'&&o[sl].length>1,
+              onShare:e=>{const val=e.target.value;um(m=>{const it2=m.options.find(q=>q.id===o.id)[sl].find(q=>q.id===x.id);it2.pct=val;});},
+              onG:e=>{const val=e.target.value;um(m=>{m.options.find(q=>q.id===o.id).veg.find(q=>q.id===x.id).g=val;});},
+              remove:()=>um(m=>{const oo=m.options.find(q=>q.id===o.id);oo[sl]=oo[sl].filter(q=>q.id!==x.id);})};};
+          const res={id:ml.id,num:String(mi+1).padStart(2,'0'),name:ml.name,onName:setM('name'),pct:ml.pct,onPct:setM('pct'),
+            split:!!ml.split,notSplit:!ml.split,pp:ml.pp,pc:ml.pc,pf:ml.pf,onPp:setM('pp'),onPc:setM('pc'),onPf:setM('pf'),
+            splitLabel:ml.split?'Reparto único':'Reparto por macro',toggleSplit:()=>um(m=>{m.split=!m.split;if(m.split){m.pp=m.pc=m.pf=m.pct;}}),
+            tgtLine:'Objetivo '+R(mt.k)+' kcal · P '+R(mt.p)+' · C '+R(mt.c)+' · G '+R(mt.f),
+            actLine:ml.cheat?'Comida libre':(ml.options.length>1?'Opción A ':'Plan ')+R(r0.tot.k)+' kcal · P '+R(r0.tot.p)+' · C '+R(r0.tot.c)+' · G '+R(r0.tot.f),
+            openTpl:()=>this.setState({td:{mode:'import',mealId:ml.id}}),
+            saveTpl:()=>this.setState({td:{mode:'save',mealId:ml.id},tdName:ml.name}),
+            remove:()=>this.updC(n=>{const a=mealsOf(n);const i=a.findIndex(x=>x.id===ml.id);if(i>=0)a.splice(i,1);}),
+            isOpen:open&&!ml.cheat,isClosed:!open&&!ml.cheat,isCheat:!!ml.cheat,showCheatBtn:!open,
+            cheatLabel:ml.cheat?'Quitar comida libre':'Comida libre',toggleCheat:()=>um(m=>{m.cheat=!m.cheat;}),
+            cheatText:'~'+R(mt.k)+' kcal orientativas. El cliente come libremente; se contabiliza como el objetivo de la comida.',
+            addOption:()=>um(m=>{m.options.push(opt());})};
+          res.options=ml.options.map((o,oi)=>{const r=oi===0?r0:solve(o,mt,cl.planMode,FM);
+            const op={title:'Opción '+String.fromCharCode(65+oi),kcalLine:R(r.tot.k)+' / '+R(mt.k)+' kcal · P '+R(r.tot.p)+' · C '+R(r.tot.c)+' · G '+R(r.tot.f),
+              canRemove:ml.options.length>1,remove:()=>um(m=>{m.options=m.options.filter(q=>q.id!==o.id);}),
+              dup:()=>um(m=>{const i=m.options.findIndex(q=>q.id===o.id);const cp=JSON.parse(JSON.stringify(o));cp.id=uid();SLOTS.forEach(([sl])=>cp[sl].forEach(x=>{x.id=uid();}));m.options.splice(i+1,0,cp);})};
+            if(open)op.cols=SLOTS.map(([sl,l,tag,mk2])=>({label:l,sw:SW[sl],bg:MBG[sl],ink:MINK[sl],sub:sl==='veg'?'gramos fijos':R(mt[mk2])+' g '+tag,items:r.S[sl].map(x=>mk(o,sl,x)),add:()=>this.openSearch(ml.id,o.id,sl)}));
+            else op.rows=SLOTS.map(([sl,l,tag])=>({tag,label:l,sw:SW[sl],swFg:SWFG[sl],items:r.S[sl].map(x=>mk(o,sl,x)),add:()=>this.openSearch(ml.id,o.id,sl)}));
+            return op;});
+          return res;
+        });
+      }
+
+      if(s.tab==='view'){
+        const open=cl.planMode==='open';
+        v.notes=cl.notes;v.onNotes=e=>{const x=e.target.value;this.updC(n=>{n.notes=x;});};
+        v.hasNotes=!!(cl.notes||'').trim();v.vOpenHint=open;
+        v.vDate=new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+        v.daysSeg=this.seg([[1,'1 día'],[7,'7 días']],s.shopDays,x=>this.setState({shopDays:x}));
+        v.print=()=>window.print();
+        const shop={};
+        const GRP={Carnes:'Carnes','Pescados y mariscos':'Pescados',Mermeladas:'Otros','Cremas de frutos secos':'Grasas y frutos secos',Huevos:'Lácteos y huevos','Lácteos':'Lácteos y huevos',Cereales:'Cereales, legumbres y tubérculos','Tubérculos':'Cereales, legumbres y tubérculos',Legumbres:'Cereales, legumbres y tubérculos',Verduras:'Verduras y frutas',Frutas:'Verduras y frutas','Frutos secos':'Grasas y frutos secos',Aceites:'Grasas y frutos secos',Suplementos:'Otros'};
+        const addShop=(x,mu)=>{const g=GRP[x.food.cat]||'Otros';shop[g]=shop[g]||{};shop[g][x.food.name]=(shop[g][x.food.name]||0)+x.g*(mu==null?1:mu);};
+        const dayMul=open?s.shopDays:1,Lt=i=>String.fromCharCode(65+i);
+        const buildMeal=(ml,mul)=>{const mt=mealTarget(ml,T);
+          if(ml.cheat)return {name:ml.name,kcal:'~'+R(mt.k)+' kcal',opts:[{title:'',blocks:[{sw:'var(--color-accent)',ink:'var(--color-accent-700)',label:'Comida libre',lines:[{name:'Sin pesar · con moderación',g:'~'+R(mt.k)+' kcal'}]}]}],txt:['*'+ml.name.toUpperCase()+'* — Comida libre (~'+R(mt.k)+' kcal)']};
+          const rs=ml.options.map(o=>solve(o,mt,cl.planMode,FM));
+          if(mul)rs.forEach(r=>SLOTS.forEach(([sl])=>r.S[sl].forEach(x=>{if(x.g)addShop(x,mul);})));
+          const multi=rs.length>1,txt=['*'+ml.name.toUpperCase()+'* (~'+R(mt.k)+' kcal)'];
+          rs.forEach((r,i)=>{if(multi)txt.push('Opción '+Lt(i)+':');
+            if(open)SLOTS.forEach(([sl,l])=>{const a=r.S[sl];if(a.length)txt.push('• '+l+(a.length>1&&sl!=='veg'?' (elige 1)':'')+': '+a.map(x=>x.food.name+' '+x.g+' g').join(' / '));});
+            else SLOTS.forEach(([sl])=>r.S[sl].forEach(x=>txt.push('• '+x.food.name+' '+x.g+' g')));});
+          return {name:ml.name,kcal:R(mt.k)+' kcal',txt,opts:rs.map((r,i)=>({title:multi?'Opción '+Lt(i)+' · '+R(r.tot.k)+' kcal':'',
+            blocks:open?SLOTS.filter(([sl])=>r.S[sl].length).map(([sl,l])=>({sw:SW[sl],ink:MINK[sl],label:sl==='veg'||r.S[sl].length<2?l:l+' · elige 1',lines:r.S[sl].map(x=>({name:x.food.name,g:x.g+' g'}))}))
+              :[{sw:'var(--color-accent)',ink:'var(--color-accent-700)',label:'Menú',lines:[].concat(...SLOTS.map(([sl])=>r.S[sl].map(x=>({name:x.food.name,g:x.g+' g'}))))}]}))};};
+        const byMenu=!open&&cl.menus&&cl.menus.length;
+        const groups=byMenu?cl.menus.map(mn=>{const mul=s.shopDays===7?mn.days.length:(mn.id===cl.activeMenu?1:0);return {hasTitle:true,title:mn.name,days:daysLabel(mn.days),meals:mn.meals.map(ml=>buildMeal(ml,mul))};})
+          :[{hasTitle:false,title:'',days:'',meals:mealsOf(cl).map(ml=>buildMeal(ml,1))}];
+        v.vGroups=groups;
+        // versions & sending
+        const hash=h32(JSON.stringify([cl.planMode,cl.meals,cl.menus||null,cl.tg,cl.calc,cl.notes]));
+        const vers=cl.versions||[],lastV=vers[vers.length-1],dirty=!lastV||lastV.hash!==hash;
+        v.verStatus=!lastV?'Sin guardar':dirty?'Cambios sin guardar':'v'+lastV.n+' guardada';
+        v.verBg=dirty?'#fff4dc':'#e3f4ea';v.verFg=dirty?'#8a5a00':'#1d6b43';
+        v.saveVersionLabel=!lastV?'Guardar plan (v1)':dirty?'Actualizar plan → v'+(vers.length+1):'Plan al día · v'+lastV.n;
+        const saveV=()=>{const nV=vers.length+1;this.updC(n=>{n.versions=(n.versions||[]).concat([{id:uid(),n:nV,at:Date.now(),hash,kcal:T.k}]);});return nV;};
+        v.saveVersion=()=>{if(dirty)saveV();};
+        const buildText=(nV,wa)=>{const tl=[],fn=(cl.name||'').split(' ')[0];
+          tl.push('Hola '+fn+', te envío tu plan nutricional de CientiFitness (v'+nV+', '+new Date().toLocaleDateString('es-ES')+').');
+          tl.push('Objetivo diario: '+T.k.toLocaleString('es-ES')+' kcal · P '+T.p+' g · C '+T.c+' g · G '+T.f+' g');
+          groups.forEach(g=>{if(g.hasTitle)tl.push('','━━ '+g.title.toUpperCase()+' · '+g.days+' ━━');g.meals.forEach(mm=>{tl.push('');tl.push(...mm.txt);});});
+          if((cl.notes||'').trim())tl.push('','Notas:',cl.notes.trim());
+          tl.push('','Cualquier duda, escríbeme por WhatsApp al '+TRAINER_PHONE+'.','— CientiFitness');
+          const out=tl.join('\n');return wa?out:out.replace(/\*/g,'');};
+        const email=(cl.email||'').trim();let ph=(cl.phone||'').replace(/\D/g,'');if(ph.length===9)ph='34'+ph;
+        const logSend=(ch,nV)=>this.updC(n=>{n.sends=(n.sends||[]).concat([{at:Date.now(),ch,v:nV}]);});
+        v.sendEmail=()=>{if(!email){this.setState({sendMsg:'Añade el email del cliente en su ficha (arriba).'});return;}const nV=dirty?saveV():lastV.n;
+          window.open('mailto:'+encodeURIComponent(email)+'?subject='+encodeURIComponent('Tu plan nutricional · CientiFitness (v'+nV+')')+'&body='+encodeURIComponent(buildText(nV,false)),'_blank');logSend('email',nV);this.setState({sendMsg:null});};
+        v.sendWa=()=>{if(ph.length<10){this.setState({sendMsg:'Añade el WhatsApp del cliente en su ficha (arriba).'});return;}const nV=dirty?saveV():lastV.n;
+          window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(buildText(nV,true)),'_blank');logSend('whatsapp',nV);this.setState({sendMsg:null});};
+        v.sendTo=(email||'Sin email')+' · '+(cl.phone||'Sin WhatsApp');
+        v.sendNote=s.sendMsg||'Si hay cambios, enviar guarda antes una versión nueva. WhatsApp se abre en tu cuenta ('+TRAINER_PHONE+') con el mensaje listo; el email, en tu gestor de correo.';
+        v.sendWarn=!!s.sendMsg;
+        const fdt=x=>new Date(x).toLocaleDateString('es-ES',{day:'numeric',month:'short'})+' '+new Date(x).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+        v.history=vers.map(q=>({at:q.at,label:'v'+q.n+' guardada · '+q.kcal.toLocaleString('es-ES')+' kcal'})).concat((cl.sends||[]).map(q=>({at:q.at,label:'v'+q.v+' enviada por '+(q.ch==='email'?'email':'WhatsApp')}))).sort((a,b)=>b.at-a.at).slice(0,6).map(q=>({label:q.label,at:fdt(q.at)}));
+        v.hasHistory=v.history.length>0;
+        const order=['Carnes','Pescados','Lácteos y huevos','Cereales, legumbres y tubérculos','Verduras y frutas','Grasas y frutos secos','Otros'];
+        const SHC={'Carnes':'prot','Pescados':'prot','Lácteos y huevos':'prot','Cereales, legumbres y tubérculos':'carb','Verduras y frutas':'veg','Grasas y frutos secos':'fat'};
+        v.shop=order.filter(k=>shop[k]).map(k=>({cat:k,bg:SHC[k]?MBG[SHC[k]]:'var(--color-neutral-100)',ink:SHC[k]?MINK[SHC[k]]:'var(--color-neutral-700)',items:Object.entries(shop[k]).map(([n,g])=>{const t=g*dayMul;return {name:n,g:t>=1000?(t/1000).toFixed(1).replace('.',',')+' kg':R(t)+' g'};})}));
+        v.shopNote=byMenu?(s.shopDays===7?'Semana completa según los días de cada menú':'1 día del menú activo'):(s.shopDays===7?'Cantidades para 7 días':'Cantidades para 1 día')+(open?' · incluye todas las alternativas':'');
+      }
+    }
+
+    if(s.view==='library'){
+      v.libTabs=[['foods','Alimentos'],['tpls','Plantillas']].map(([k,l])=>({label:l,bd:s.libTab===k?'var(--color-accent)':'transparent',fg:s.libTab===k?'#fff':'var(--color-neutral-700)',go:()=>this.setState({libTab:k})}));
+      v.isFoods=s.libTab==='foods';v.isTpls=s.libTab==='tpls';
+      const q=norm(s.foodQuery);
+      const rows=allFoods.filter(f=>(!q||norm(f.name).includes(q))&&(!s.foodCat||f.cat===s.foodCat));
+      v.foodQuery=s.foodQuery;v.onFoodQuery=e=>this.setState({foodQuery:e.target.value});
+      v.foodCat=s.foodCat;v.onFoodCat=e=>this.setState({foodCat:e.target.value});
+      v.foodCount=rows.length+' alimentos · valores por 100 g';
+      v.showNewFood=s.showNewFood;v.newFoodLabel=s.showNewFood?'Cerrar':'Nuevo alimento';v.toggleNewFood=()=>this.setState({showNewFood:!s.showNewFood});
+      v.foodRows=rows.map(f=>({name:f.name,al:f.al,cat:f.cat,macro:MLBL[mainMacro(f)],mbg:MBG[mainMacro(f)],mink:MINK[mainMacro(f)],k:f.k,p:f.p,c:f.c,f:f.f}));
+      v.tplCards=s.tpls.map(t=>{const names=[];(t.opts||[]).forEach(o=>SLOTS.forEach(([sl])=>o[sl].forEach(x=>{if(FM[x.fid])names.push(FM[x.fid].name);})));
+        return {name:t.name,foods:names.join(' · '),meta:(t.opts||[]).length+(t.opts.length===1?' opción':' opciones'),del:()=>this.setState(st=>({tpls:st.tpls.filter(x=>x.id!==t.id)}))};});
+      v.noTpls=s.tpls.length===0;
+    }
+
+    v.srOpen=!!s.sr;
+    if(s.sr&&cl){
+      const vt=this.vetos(cl),ml=mealsOf(cl).find(m=>m.id===s.sr.mealId);
+      v.srCtx=(ml?ml.name:'')+' · '+MLBL[s.sr.slot];
+      v.srClose=()=>this.setState({sr:null});
+      v.srFilters=this.seg([['all','Todo'],['prot','Proteínas'],['carb','Hidratos'],['fat','Grasas'],['veg','Verdura / fruta']],s.srFilter,x=>this.setState({srFilter:x}));
+      v.srQuery=s.srQuery;v.onSrQuery=e=>this.setState({srQuery:e.target.value});
+      v.showSrCreate=s.srCreate;v.srCreateLabel=s.srCreate?'Cerrar':'+ Crear alimento';v.srToggleCreate=()=>this.setState({srCreate:!s.srCreate});
+      const q=norm(s.srQuery);
+      const res=allFoods.filter(f=>{const mm=mainMacro(f);const fOk=s.srFilter==='all'||(s.srFilter==='veg'?(f.cat==='Verduras'||f.cat==='Frutas'):mm===s.srFilter);return fOk&&(!q||norm(f.name).includes(q)||norm(f.cat).includes(q));}).slice(0,40);
+      v.srNone=res.length===0;
+      v.srResults=res.map(f=>{const sel=s.srSel.includes(f.id);const mm=mainMacro(f);return {name:f.name,mbg:MBG[mm],mink:MINK[mm],mlabel:MLBL[mm],flag:this.flag(f,vt),meta:f.cat+' · P '+f.p+' · C '+f.c+' · G '+f.f,kcal:f.k+' kcal',
+        bg:sel&&this.flag(f,vt)?'#fff1ee':sel?'var(--color-accent-100)':'transparent',ring:sel?'var(--color-accent)':'var(--color-divider)',box:sel?'var(--color-accent)':'transparent',check:sel?'✓':'',
+        toggle:()=>this.setState(st=>({srSel:st.srSel.includes(f.id)?st.srSel.filter(x=>x!==f.id):st.srSel.concat([f.id])}))};});
+      v.srCount=s.srSel.length+' seleccionados';
+      {const bad=s.srSel.map(id=>FM[id]).filter(f=>f&&this.flag(f,vt));v.srHasConf=bad.length>0;
+        v.srConfText=(bad.length===1?bad[0].name+' choca':bad.map(f=>f.name).join(', ')+' chocan')+' con los vetos del cliente ('+cl.allergies+').';
+        v.srDropConf=()=>this.setState(st=>({srSel:st.srSel.filter(id=>!(FM[id]&&this.flag(FM[id],vt)))}));}
+      v.srAdd=()=>{const {mealId,optId,slot}=s.sr,sel=s.srSel;
+        this.updC(n=>{const m=mealsOf(n).find(x=>x.id===mealId);const o=m&&m.options.find(x=>x.id===optId);if(!o)return;sel.forEach(fid=>{o[slot].push(slot==='veg'?vg(fid,100):it(fid,50));});});
+        this.setState({sr:null});};
+    }
+
+    v.tdOpen=!!s.td;
+    if(s.td){
+      v.tdClose=()=>this.setState({td:null});
+      v.tdIsSave=s.td.mode==='save';v.tdIsImport=s.td.mode==='import';
+      v.tdTitle=v.tdIsSave?'Guardar como plantilla':'Importar plantilla';
+      v.tdName=s.tdName;v.onTdName=e=>this.setState({tdName:e.target.value});
+      v.tdSave=()=>{const ml=cl&&mealsOf(cl).find(m=>m.id===s.td.mealId);if(!ml)return;const opts=JSON.parse(JSON.stringify(ml.options));this.setState(st=>({tpls:st.tpls.concat([{id:uid(),name:st.tdName||ml.name,opts}]),td:null}));};
+      v.tdEmpty=s.tpls.length===0;
+      v.tdList=s.tpls.map(t=>{const names=[];(t.opts||[]).forEach(o=>SLOTS.forEach(([sl])=>o[sl].forEach(x=>{if(FM[x.fid])names.push(FM[x.fid].name);})));
+        return {name:t.name,foods:names.join(' · '),pick:()=>{const mid=s.td.mealId;this.updC(n=>{const m=mealsOf(n).find(x=>x.id===mid);if(!m)return;m.options=JSON.parse(JSON.stringify(t.opts)).map(o=>{o.id=uid();SLOTS.forEach(([sl])=>o[sl].forEach(x=>{x.id=uid();}));return o;});});this.setState({td:null});}};});
+    }
+    return v;
+  }
+}
+</script>
+</body>
+</html>
